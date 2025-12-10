@@ -5,6 +5,7 @@ import NoteList from './components/NoteList';
 import NotebookList from './components/NotebookList';
 import Editor from './components/Editor';
 import Auth from './components/Auth';
+import AccountSettings from './components/AccountSettings';
 import { Note, Notebook, ViewMode } from './types';
 import * as StorageService from './services/storage';
 import { supabase } from './services/supabase';
@@ -185,6 +186,33 @@ const App: React.FC = () => {
     return <Auth />;
   }
 
+  // Account Settings View
+  if (viewMode === ViewMode.ACCOUNT) {
+    return (
+      <div className="flex h-screen bg-background text-foreground overflow-hidden font-sans">
+        <Sidebar 
+          onNewNote={handleNewNote} 
+          activeTab={activeTab}
+          setActiveTab={handleSidebarTabChange}
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          isOpen={isMobileMenuOpen}
+          onClose={() => setIsMobileMenuOpen(false)}
+          notebooks={notebooks}
+          activeNotebookId={activeNotebookId}
+          onSelectNotebook={handleSelectNotebook}
+          onCreateNotebook={handleCreateNotebook}
+          isDarkMode={isDarkMode}
+          toggleTheme={() => setIsDarkMode(!isDarkMode)}
+          onOpenSettings={() => setViewMode(ViewMode.ACCOUNT)}
+        />
+        <div className="flex-1 h-full relative">
+            <AccountSettings onBack={handleBackToList} />
+        </div>
+      </div>
+    );
+  }
+
   const selectedNote = notes.find(n => n.id === selectedNoteId);
   
   const visibleNotes = notes.filter(n => {
@@ -214,6 +242,7 @@ const App: React.FC = () => {
         onCreateNotebook={handleCreateNotebook}
         isDarkMode={isDarkMode}
         toggleTheme={() => setIsDarkMode(!isDarkMode)}
+        onOpenSettings={() => setViewMode(ViewMode.ACCOUNT)}
       />
 
       <div className="flex-1 flex h-full w-full">

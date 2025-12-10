@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Search, Star, Trash2, PlusCircle, Settings, Book, ChevronRight, ChevronDown, Plus, Moon, Sun, X, LogOut } from 'lucide-react';
+import { Search, Star, Trash2, PlusCircle, Settings, Book, ChevronRight, ChevronDown, Plus, Moon, Sun, X, LogOut, User } from 'lucide-react';
 import { Notebook } from '../types';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
@@ -23,6 +23,7 @@ interface SidebarProps {
   onCreateNotebook: (name: string, emoji: string, parentId: string | null) => void;
   isDarkMode: boolean;
   toggleTheme: () => void;
+  onOpenSettings: () => void;
 }
 
 const EMOJI_OPTIONS = ['📓', '📘', '💼', '🏡', '✈️', '🍕', '💡', '🎓', '🚀', '🎨', '❤️', '✅'];
@@ -40,7 +41,8 @@ const Sidebar: React.FC<SidebarProps> = ({
   onSelectNotebook,
   onCreateNotebook,
   isDarkMode,
-  toggleTheme
+  toggleTheme,
+  onOpenSettings
 }) => {
   const [isNotebooksExpanded, setIsNotebooksExpanded] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -52,8 +54,10 @@ const Sidebar: React.FC<SidebarProps> = ({
   const [expandedNotebooks, setExpandedNotebooks] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-        if (data.user?.email) setUserEmail(data.user.email);
+    AuthService.getProfile().then((profile) => {
+      if (profile) {
+        setUserEmail(profile.full_name || profile.email);
+      }
     });
   }, []);
 
@@ -185,18 +189,20 @@ const Sidebar: React.FC<SidebarProps> = ({
         isOpen ? 'translate-x-0' : '-translate-x-full'
       )}>
         
-        {/* Header */}
-        <div className="p-4 flex items-center justify-between h-14 border-b">
-          <div className="flex items-center gap-2 font-semibold overflow-hidden">
-            <div className="w-6 h-6 rounded bg-primary flex items-center justify-center text-primary-foreground text-xs font-bold">
-                {userEmail.charAt(0).toUpperCase()}
-            </div>
-            <span className="truncate text-sm" title={userEmail}>{userEmail}</span>
+        {/* Header - Clickable for Settings */}
+        <button 
+          onClick={() => {
+            onOpenSettings();
+            if (window.innerWidth < 768) onClose();
+          }}
+          className="p-4 flex items-center gap-2 h-14 border-b w-full hover:bg-accent/50 transition-colors text-left"
+        >
+          <div className="w-6 h-6 rounded bg-primary flex items-center justify-center text-primary-foreground text-xs font-bold flex-shrink-0">
+              {userEmail.charAt(0).toUpperCase()}
           </div>
-          <Button variant="ghost" size="icon" onClick={onClose} className="md:hidden">
-            <X size={18} />
-          </Button>
-        </div>
+          <span className="truncate text-sm font-semibold flex-1" title={userEmail}>{userEmail}</span>
+          <Settings size={14} className="text-muted-foreground" />
+        </button>
 
         {/* New Note Button */}
         <div className="px-3 py-4">

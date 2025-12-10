@@ -17,6 +17,14 @@ export interface Notebook {
   parentId?: string | null; // ID of the parent notebook, null if root
 }
 
+export interface Profile {
+  id: string;
+  email: string;
+  full_name?: string;
+  avatar_url?: string;
+  role: 'user' | 'admin';
+}
+
 export interface AIResponseState {
   isLoading: boolean;
   error: string | null;
@@ -26,4 +34,5 @@ export interface AIResponseState {
 export enum ViewMode {
   EDITOR = 'EDITOR',
   EMPTY = 'EMPTY',
+  ACCOUNT = 'ACCOUNT',
 }

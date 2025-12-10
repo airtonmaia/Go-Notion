@@ -100,18 +100,34 @@
         background: hsl(var(--muted-foreground));
       }
 
-      /* PrismJS Overrides for better fit */
-      pre[class*="language-"] {
-        border-radius: var(--radius);
-        margin: 1.5rem 0;
-        border: 1px solid hsl(var(--border));
-        background: #1e1e1e !important; /* Force dark background even in light mode for code */
+      /* Tiptap Editor Styles */
+      .tiptap {
+        outline: none !important;
       }
-      code[class*="language-"], pre[class*="language-"] {
-        font-family: 'Fira Code', 'Consolas', monospace;
-        font-size: 0.9em;
-        text-shadow: none !important;
+      .tiptap p.is-editor-empty:first-child::before {
+        color: hsl(var(--muted-foreground));
+        content: attr(data-placeholder);
+        float: left;
+        height: 0;
+        pointer-events: none;
       }
+      
+      /* Typography defaults for Editor */
+      .tiptap h1 { font-size: 2.25em; font-weight: 700; margin-top: 0.8em; margin-bottom: 0.4em; line-height: 1.2; }
+      .tiptap h2 { font-size: 1.75em; font-weight: 600; margin-top: 0.8em; margin-bottom: 0.4em; line-height: 1.3; }
+      .tiptap h3 { font-size: 1.4em; font-weight: 600; margin-top: 0.8em; margin-bottom: 0.4em; }
+      .tiptap p { margin-bottom: 0.8em; line-height: 1.7; }
+      .tiptap ul { list-style-type: disc; padding-left: 1.5em; margin-bottom: 1em; }
+      .tiptap ol { list-style-type: decimal; padding-left: 1.5em; margin-bottom: 1em; }
+      .tiptap blockquote { border-left: 3px solid hsl(var(--primary)); padding-left: 1em; color: hsl(var(--muted-foreground)); font-style: italic; margin-left: 0; margin-right: 0; }
+      .tiptap pre { background: #1e1e1e; color: #f8f8f2; padding: 0.75rem 1rem; border-radius: 0.5rem; font-family: 'Fira Code', monospace; margin-bottom: 1em; }
+      .tiptap code { background-color: hsl(var(--muted)); padding: 0.2em 0.4em; border-radius: 0.25em; font-size: 0.9em; font-family: monospace; }
+      .tiptap pre code { background: none; padding: 0; }
+      .tiptap b, .tiptap strong { font-weight: 700; }
+      .tiptap i, .tiptap em { font-style: italic; }
+      .tiptap s, .tiptap strike { text-decoration: line-through; }
+      .tiptap a { color: hsl(var(--primary)); text-decoration: underline; cursor: pointer; }
+
     </style>
     <script>
       tailwind.config = {
@@ -165,9 +181,6 @@
                 foreground: "hsl(var(--card-foreground))",
               },
             },
-            borderColor: {
-              DEFAULT: "hsl(var(--border))",
-            },
             borderRadius: {
               lg: "var(--radius)",
               md: "calc(var(--radius) - 2px)",
@@ -185,7 +198,13 @@
     "react/": "https://aistudiocdn.com/react@^19.2.0/",
     "react": "https://aistudiocdn.com/react@^19.2.0",
     "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0",
-    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2"
+    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2",
+    "clsx": "https://esm.sh/clsx",
+    "tailwind-merge": "https://esm.sh/tailwind-merge",
+    "@tiptap/react": "https://esm.sh/@tiptap/react",
+    "@tiptap/starter-kit": "https://esm.sh/@tiptap/starter-kit",
+    "@tiptap/extension-placeholder": "https://esm.sh/@tiptap/extension-placeholder",
+    "@tiptap/core": "https://esm.sh/@tiptap/core"
   }
 }
 </script>
