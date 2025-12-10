@@ -53,8 +53,8 @@ const NoteList: React.FC<NoteListProps> = ({
   };
 
   return (
-    <div className="w-full flex flex-col h-full bg-background border-r">
-      <div className="p-4 border-b flex items-center justify-between sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+    <div className="w-full flex flex-col h-full bg-gray-50 ">
+      <div className="p-4  flex items-center justify-between sticky top-0 z-10 bg-primary backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="flex items-center gap-3">
           <Button 
             variant="ghost" 
@@ -64,7 +64,7 @@ const NoteList: React.FC<NoteListProps> = ({
           >
             <Menu size={20} />
           </Button>
-          <div>
+          <div className="w-full flex  flex  gap-3">
             <div className="flex items-center gap-2">
               <h2 className="text-lg font-semibold tracking-tight text-foreground">
                 {notebookName || 'Todas as Notas'}
@@ -93,10 +93,10 @@ const NoteList: React.FC<NoteListProps> = ({
                 key={note.id}
                 onClick={() => onSelectNote(note.id)}
                 className={cn(
-                  "flex flex-col items-start gap-2 w-full p-4 text-left transition-all",
+                  "relative flex flex-col items-start gap-2 w-full p-4 text-left transition-all rounded-lg border-2 border-gray-50",
                   selectedNoteId === note.id
-                    ? "bg-primary/5 border border-primary/50 shadow-sm rounded-lg -m-[1px]"
-                    : "hover:bg-muted/40 rounded-lg"
+                    ? "bg-transparent shadow-none after:left-3 after:right-3 border-2 border-primary after:bottom-0 after:h-0.5 after:bg-primary"
+                    : "hover:bg-muted/40"
                 )}
               >
                 <div className="flex flex-col gap-1 w-full">
