@@ -9,7 +9,6 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@google/genai": "^0.21.0",
     "@supabase/supabase-js": "^2.47.10",
     "@tiptap/core": "^2.11.2",
     "@tiptap/pm": "^2.11.2",

@@ -1,12 +1,11 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Note, AIResponseState } from '../types';
+import { Note } from '../types';
 import { 
-  MoreHorizontal, Calendar, Sparkles, Wand2, SpellCheck, PenLine, Expand, 
-  ArrowLeft, X, Edit3, Eye, Star, Share2, Link as LinkIcon, ExternalLink,
+  MoreHorizontal, Calendar, Expand, 
+  ArrowLeft, Edit3, Eye, Star, Share2, Link as LinkIcon, ExternalLink,
   FolderInput, Copy, CopyPlus, Tags, Pin, Search, Info, History, Printer, Trash2
 } from 'lucide-react';
-import * as GeminiService from '../services/geminiService';
 import { Button } from './ui/Button';
 import { cn } from './ui/utils';
 import TiptapEditor from './TiptapEditor';
@@ -23,8 +22,6 @@ const Editor: React.FC<EditorProps> = ({ note, onUpdate, onDelete, onBack }) => 
   const [title, setTitle] = useState(note.title);
   const [content, setContent] = useState(note.content);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
-  const [aiState, setAiState] = useState<AIResponseState>({ isLoading: false, error: null, result: null });
-  const [showAiMenu, setShowAiMenu] = useState(false);
   const [showSettingsMenu, setShowSettingsMenu] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [isReadOnly, setIsReadOnly] = useState(false);
@@ -36,8 +33,6 @@ const Editor: React.FC<EditorProps> = ({ note, onUpdate, onDelete, onBack }) => 
   useEffect(() => {
     setTitle(note.title);
     setContent(note.content);
-    setAiState({ isLoading: false, error: null, result: null });
-    setShowAiMenu(false);
     setShowSettingsMenu(false);
     setIsReadOnly(false);
   }, [note.id]);
@@ -74,42 +69,6 @@ const Editor: React.FC<EditorProps> = ({ note, onUpdate, onDelete, onBack }) => 
 
     return () => clearTimeout(handler);
   }, [title, content, note, onUpdate]);
-
-  const handleAiAction = async (action: 'grammar' | 'summarize' | 'continue' | 'ideas') => {
-    if (!editorRef.current) return;
-    
-    setAiState({ isLoading: true, error: null, result: null });
-    setShowAiMenu(false);
-
-    try {
-      const currentText = editorRef.current.getText(); // Get plain text for AI context
-      let result = '';
-
-      if (action === 'grammar') {
-        result = await GeminiService.fixGrammarAndStyle(currentText);
-        editorRef.current.commands.setContent(result);
-        setContent(editorRef.current.getHTML()); 
-      } else if (action === 'continue') {
-        const continuation = await GeminiService.continueWriting(currentText);
-        result = continuation;
-        editorRef.current.commands.insertContent(continuation);
-        setContent(editorRef.current.getHTML()); 
-      } else if (action === 'summarize') {
-        result = await GeminiService.summarizeText(currentText);
-        setAiState({ isLoading: false, error: null, result });
-        return; 
-      } else if (action === 'ideas') {
-        result = await GeminiService.generateIdeas(title);
-        const htmlIdeas = `<h3>Ideias Sugeridas por IA:</h3><p>${result.replace(/\n/g, '<br>')}</p>`;
-        editorRef.current.commands.insertContent(htmlIdeas);
-        setContent(editorRef.current.getHTML()); 
-      }
-      
-      setAiState({ isLoading: false, error: null, result: null });
-    } catch (err) {
-      setAiState({ isLoading: false, error: 'Erro ao processar com IA.', result: null });
-    }
-  };
 
   const toggleFavorite = () => {
     onUpdate({ ...note, isFavorite: !note.isFavorite });
@@ -195,39 +154,6 @@ const Editor: React.FC<EditorProps> = ({ note, onUpdate, onDelete, onBack }) => 
            </Button>
 
            <div className="h-4 w-px bg-border mx-1" />
-
-           {/* AI Menu */}
-           <div className="relative">
-            <Button 
-              size="sm"
-              onClick={() => setShowAiMenu(!showAiMenu)}
-              disabled={isReadOnly}
-              className={cn("gap-2 h-8 rounded-full", showAiMenu && "ring-2 ring-primary ring-offset-2")}
-            >
-              <Sparkles size={14} />
-              <span className="hidden sm:inline">AI Assistant</span>
-            </Button>
-            
-            {showAiMenu && (
-               <>
-                <div className="fixed inset-0 z-40" onClick={() => setShowAiMenu(false)} />
-                <div className="absolute right-0 mt-2 w-56 rounded-md border bg-popover text-popover-foreground shadow-md outline-none animate-in fade-in zoom-in-95 z-50 p-1">
-                  <Button variant="ghost" className="w-full justify-start h-9" onClick={() => handleAiAction('grammar')}>
-                    <SpellCheck size={16} className="mr-2 text-primary" /> Corrigir Gramática
-                  </Button>
-                  <Button variant="ghost" className="w-full justify-start h-9" onClick={() => handleAiAction('continue')}>
-                    <PenLine size={16} className="mr-2 text-blue-500" /> Continuar Escrevendo
-                  </Button>
-                  <Button variant="ghost" className="w-full justify-start h-9" onClick={() => handleAiAction('summarize')}>
-                    <Expand size={16} className="mr-2 text-purple-500" /> Resumir Nota
-                  </Button>
-                  <Button variant="ghost" className="w-full justify-start h-9" onClick={() => handleAiAction('ideas')}>
-                    <Wand2 size={16} className="mr-2 text-amber-500" /> Gerar Ideias
-                  </Button>
-                </div>
-              </>
-            )}
-           </div>
 
           {/* Settings Menu Trigger */}
           <div className="relative" ref={settingsMenuRef}>
@@ -375,31 +301,6 @@ const Editor: React.FC<EditorProps> = ({ note, onUpdate, onDelete, onBack }) => 
           </div>
         </div>
       </div>
-
-      {/* AI Processing Overlay */}
-      {aiState.isLoading && (
-        <div className="absolute top-16 left-0 right-0 z-30 flex justify-center px-4">
-          <div className="bg-primary text-primary-foreground text-sm px-4 py-2 rounded-full shadow-lg flex items-center gap-2 animate-in slide-in-from-top-2">
-            <div className="w-3 h-3 border-2 border-white/50 border-t-white rounded-full animate-spin"></div>
-            Processando...
-          </div>
-        </div>
-      )}
-
-      {/* AI Result Area */}
-      {aiState.result && !aiState.isLoading && (
-        <div className="bg-muted/50 border-b p-6 relative animate-in slide-in-from-top-4 duration-300 max-h-48 overflow-y-auto">
-          <div className="flex justify-between items-start mb-2 sticky top-0 pb-2">
-            <h4 className="text-primary font-semibold text-sm flex items-center gap-2">
-              <Sparkles size={14} /> Resumo IA
-            </h4>
-            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setAiState(prev => ({...prev, result: null}))}>
-              <X size={14} />
-            </Button>
-          </div>
-          <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">{aiState.result}</p>
-        </div>
-      )}
 
       {/* Title Input */}
       <div className="px-6 md:px-8 pt-8 pb-4 bg-background">

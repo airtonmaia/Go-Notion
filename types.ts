@@ -35,12 +35,6 @@ export interface Profile {
   updated_at?: string;
 }
 
-export interface AIResponseState {
-  isLoading: boolean;
-  error: string | null;
-  result: string | null;
-}
-
 export enum ViewMode {
   EDITOR = 'EDITOR',
   EMPTY = 'EMPTY',
