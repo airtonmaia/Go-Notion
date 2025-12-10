@@ -1,5 +1,5 @@
 {
-  "name": "ForeverNote AI",
-  "description": "A powerful, note-taking application inspired by Evernote, featuring organization tools and integrated Gemini AI for summarizing, content generation, and smart editing.",
+  "name": "Go Notion",
+  "description": "Um aplicativo poderoso para anotações, inspirado no Evernote, com ferramentas de organização e inteligência artificial Gemini integrada para resumir, gerar conteúdo e editar de forma inteligente.",
   "requestFramePermissions": []
 }
