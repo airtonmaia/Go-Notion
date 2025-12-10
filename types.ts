@@ -23,6 +23,7 @@ export interface Profile {
   full_name?: string;
   avatar_url?: string;
   role: 'user' | 'admin';
+  updated_at?: string;
 }
 
 export interface AIResponseState {
