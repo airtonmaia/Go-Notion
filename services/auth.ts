@@ -62,13 +62,15 @@ export const updateProfile = async (updates: Partial<Profile>) => {
   const user = await getCurrentUser();
   if (!user) throw new Error("Not authenticated");
 
+  // Use update() instead of upsert(). Users only have permission to UPDATE their profile,
+  // not INSERT it (creation is handled by the database trigger).
   const { error } = await supabase
     .from('profiles')
-    .upsert({
-      id: user.id,
+    .update({
       updated_at: new Date().toISOString(),
       ...updates,
-    });
+    })
+    .eq('id', user.id);
 
   if (error) throw error;
 };
