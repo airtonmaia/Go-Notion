@@ -9,16 +9,16 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "react": "^19.2.1",
     "react-dom": "^19.2.1",
     "@google/genai": "^1.32.0",
-    "clsx": "^2.1.1",
-    "react": "^19.2.1",
-    "tailwind-merge": "^3.4.0",
     "lucide-react": "^0.559.0",
+    "clsx": "^2.1.1",
+    "tailwind-merge": "^3.4.0",
     "@supabase/supabase-js": "^2.87.1",
-    "@tiptap/extension-placeholder": "^3.13.0",
     "@tiptap/react": "^3.13.0",
     "@tiptap/starter-kit": "^3.13.0",
+    "@tiptap/extension-placeholder": "^3.13.0",
     "@tiptap/extension-task-list": "^3.13.0",
     "@tiptap/extension-task-item": "^3.13.0"
   },
