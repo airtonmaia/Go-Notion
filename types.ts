@@ -35,6 +35,15 @@ export interface Profile {
   updated_at?: string;
 }
 
+export interface TaskItem {
+  id: string;
+  text: string;
+  checked: boolean;
+  noteId: string;
+  noteTitle: string;
+  updatedAt: number;
+}
+
 export enum ViewMode {
   EDITOR = 'EDITOR',
   EMPTY = 'EMPTY',

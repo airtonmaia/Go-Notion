@@ -1,16 +1,70 @@
-
-import React, { useState, useEffect } from 'react';
+﻿
+import React, { useState, useEffect, useMemo } from 'react';
 import Sidebar from './components/Sidebar';
 import NoteList from './components/NoteList';
 import NotebookList from './components/NotebookList';
 import Editor from './components/Editor';
 import Auth from './components/Auth';
 import AccountSettings from './components/AccountSettings';
-import { Note, Notebook, ViewMode } from './types';
+import TasksView from './components/TasksView';
+import { Note, Notebook, TaskItem, ViewMode } from './types';
 import * as StorageService from './services/storage';
 import { supabase } from './services/supabase';
 import { Coffee, Menu, Loader2, Tag } from 'lucide-react';
 import { Button } from './components/ui/Button';
+
+const extractTasksFromNote = (note: Note): TaskItem[] => {
+  const tasks: TaskItem[] = [];
+  const htmlContent = note.content || '';
+  const taskRegex = /<li[^>]*data-type="taskItem"[^>]*>([\s\S]*?)<\/li>/gi;
+  let match;
+  let index = 0;
+
+  while ((match = taskRegex.exec(htmlContent)) !== null) {
+    const rawLi = match[0] || '';
+    const inner = match[1] || '';
+    const text = inner
+      .replace(/<input[^>]*>/gi, '')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/&nbsp;/gi, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    if (!text) continue;
+
+    const checked = /data-checked=["']?(true|checked)["']?/i.test(rawLi);
+    tasks.push({
+      id: `${note.id}-task-${index}`,
+      text,
+      checked,
+      noteId: note.id,
+      noteTitle: note.title || 'Sem titulo',
+      updatedAt: note.updatedAt,
+    });
+    index += 1;
+  }
+
+  if (tasks.length === 0) {
+    const mdRegex = /-\s*\[( |x|X)\]\s+(.*)/g;
+    let mdMatch;
+    let mdIndex = 0;
+    while ((mdMatch = mdRegex.exec(note.content || '')) !== null) {
+      const checked = (mdMatch[1] || '').toLowerCase() === 'x';
+      const text = (mdMatch[2] || '').trim();
+      if (!text) continue;
+      tasks.push({
+        id: `${note.id}-md-${mdIndex}`,
+        text,
+        checked,
+        noteId: note.id,
+        noteTitle: note.title || 'Sem titulo',
+        updatedAt: note.updatedAt,
+      });
+      mdIndex += 1;
+    }
+  }
+
+  return tasks;
+};
 
 const App: React.FC = () => {
   const [session, setSession] = useState<any>(null);
@@ -21,17 +75,23 @@ const App: React.FC = () => {
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
   const [activeNotebookId, setActiveNotebookId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>(ViewMode.EMPTY);
-  const [activeTab, setActiveTab] = useState('notes'); // 'notes', 'shortcuts', 'trash', 'notebooks', or 'tag:TagName'
+  const [activeTab, setActiveTab] = useState('notes'); // 'notes', 'shortcuts', 'trash', 'tasks', 'notebooks', or 'tag:TagName'
   const [searchQuery, setSearchQuery] = useState('');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
   const [isDarkMode, setIsDarkMode] = useState(() => {
     const saved = localStorage.getItem('theme');
-    return saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    if (saved === 'dark') return true;
+    if (saved === 'light') return false;
+    return false; // default: white/light theme
   });
 
   // Derived state: Unique tags from all notes
   const allTags = Array.from(new Set(notes.flatMap(note => note.tags || []))).sort();
+  const tasksFromNotes: TaskItem[] = useMemo(
+    () => notes.flatMap(extractTasksFromNote),
+    [notes]
+  );
 
   // Auth Listener
   useEffect(() => {
@@ -143,7 +203,7 @@ const App: React.FC = () => {
     }
   };
 
-  const handleCreateNotebook = async (name: string, emoji: string = '📓', parentId: string | null = null) => {
+  const handleCreateNotebook = async (name: string, emoji: string = 'ðŸ““', parentId: string | null = null) => {
     await StorageService.createNotebook(name, emoji, parentId);
     refreshData();
   };
@@ -183,6 +243,81 @@ const App: React.FC = () => {
   const handleSelectNote = (id: string) => {
     setSelectedNoteId(id);
     setViewMode(ViewMode.EDITOR);
+  };
+
+  const handleSelectNoteFromTasks = (id: string) => {
+    setSelectedNoteId(id);
+    setViewMode(ViewMode.EDITOR);
+    setActiveTab('notes');
+    if (window.innerWidth < 768) {
+      setIsMobileMenuOpen(false);
+    }
+  };
+
+  const handleCreateTaskFromTasks = async () => {
+    await handleNewNote();
+    setActiveTab('notes');
+  };
+
+  const updateTaskInNote = (note: Note, taskId: string, checked: boolean): Note => {
+    let content = note.content || '';
+    const now = Date.now();
+
+    if (taskId.includes('-task-')) {
+      const targetIndex = parseInt(taskId.split('-task-')[1] || '0', 10);
+      let index = 0;
+      content = content.replace(/<li[^>]*data-type="taskItem"[^>]*>[\s\S]*?<\/li>/gi, (block) => {
+        if (index !== targetIndex) {
+          index += 1;
+          return block;
+        }
+        index += 1;
+
+        let updated = block.replace(/data-checked=["'][^"']*["']/i, '');
+        updated = updated.replace(/^<li([^>]*)>/i, (_m, attrs) => {
+          const cleanAttrs = (attrs || '').trim().replace(/data-checked=["'][^"']*["']/i, '').trim();
+          const prefix = cleanAttrs ? ` ${cleanAttrs}` : '';
+          return `<li${prefix} data-checked="${checked}">`;
+        });
+        updated = updated.replace(/<input([^>]*?)\schecked(?:=["']checked["'])?([^>]*)>/i, '<input$1$2>');
+        updated = updated.replace(/<input([^>]*)>/i, `<input$1${checked ? ' checked' : ''}>`);
+        return updated;
+      });
+    } else if (taskId.includes('-md-')) {
+      const targetIndex = parseInt(taskId.split('-md-')[1] || '0', 10);
+      let index = 0;
+      content = content.replace(/-\s*\[( |x|X)\]\s+(.*)/g, (match, mark, text) => {
+        if (index !== targetIndex) {
+          index += 1;
+          return match;
+        }
+        index += 1;
+        const newMark = checked ? 'x' : ' ';
+        return `- [${newMark}] ${text}`;
+      });
+    }
+
+    return {
+      ...note,
+      content,
+      updatedAt: now,
+    };
+  };
+
+  const handleToggleTaskStatus = async (taskId: string, checked: boolean) => {
+    const noteId = taskId.includes('-task-')
+      ? taskId.split('-task-')[0]
+      : taskId.includes('-md-')
+        ? taskId.split('-md-')[0]
+        : null;
+    if (!noteId) return;
+
+    const target = notes.find(n => n.id === noteId);
+    if (!target) return;
+
+    const updatedNote = updateTaskInNote(target, taskId, checked);
+    setNotes(prev => prev.map(n => n.id === noteId ? updatedNote : n));
+    await StorageService.saveNote(updatedNote);
   };
 
   const handleBackToList = () => {
@@ -292,84 +427,95 @@ const App: React.FC = () => {
       />
 
       <div className="flex-1 flex h-full w-full">
-        <div className={`
-          flex-col h-full bg-background border-r
-          ${selectedNoteId && activeTab !== 'notebooks' ? 'hidden md:flex md:w-80' : 'flex w-full md:w-80'}
-          flex-shrink-0
-        `}>
-          {activeTab === 'notebooks' ? (
-            <NotebookList 
-              notebooks={notebooks}
-              onCreateNotebook={handleCreateNotebook}
-              onDeleteNotebook={handleDeleteNotebook}
-              onSelectNotebook={handleSelectNotebook}
-              onOpenMenu={() => setIsMobileMenuOpen(true)}
-            />
-          ) : (
-            <NoteList 
-              notes={visibleNotes}
-              selectedNoteId={selectedNoteId} 
-              onSelectNote={handleSelectNote}
-              searchQuery={searchQuery}
-              onOpenMenu={() => setIsMobileMenuOpen(true)}
-              notebookName={activeTitle}
-            />
-          )}
-        </div>
-
-        <div className={`flex-1 h-full bg-background relative 
-          ${(!selectedNoteId && activeTab !== 'notebooks') ? 'hidden md:flex' : ''}
-          ${(activeTab === 'notebooks') ? 'hidden md:flex' : ''}
-          ${(selectedNoteId && activeTab !== 'notebooks') ? 'flex w-full' : ''}
-        `}>
-          {viewMode === ViewMode.EDITOR && selectedNote ? (
-            <Editor 
-              note={selectedNote} 
-              onUpdate={handleUpdateNote}
-              onDelete={handleDeleteNote}
-              onBack={handleBackToList}
-            />
-          ) : (
-            <div className="h-full w-full flex flex-col items-center justify-center bg-muted/20 text-muted-foreground p-8 text-center">
-               <div className="md:hidden w-full absolute top-4 left-4">
-                  <Button variant="ghost" size="icon" onClick={() => setIsMobileMenuOpen(true)}>
-                    <Menu size={24} />
-                  </Button>
-               </div>
-               
-               {activeTab === 'notebooks' ? (
-                 <>
-                   <div className="bg-primary/10 p-6 rounded-full mb-6">
-                      <Coffee size={64} className="text-primary" />
-                   </div>
-                   <h1 className="text-2xl font-bold text-foreground mb-2">Gerencie seus Cadernos</h1>
-                   <p className="max-w-md">
-                     Selecione um caderno na barra lateral ou na lista para ver suas notas.
-                   </p>
-                 </>
-               ) : (
-                 <>
-                   <div className="bg-primary/10 p-6 rounded-full mb-6">
-                      <Coffee size={64} className="text-primary" />
-                   </div>
-                   <h1 className="text-2xl font-bold text-foreground mb-2">Bem-vindo ao ForeverNote</h1>
-                   <p className="max-w-md mb-8">
-                     {activeNotebookId || activeTab === 'shortcuts' || activeTab.startsWith('tag:')
-                        ? "A lista está vazia ou nenhuma nota selecionada." 
-                        : "Selecione uma nota ou crie uma nova para começar."}
-                   </p>
-                   <Button 
-                      onClick={handleNewNote}
-                      size="lg"
-                      className="gap-2"
-                   >
-                     Criar Nova Nota
-                   </Button>
-                 </>
-               )}
+        {activeTab === 'tasks' ? (
+          <TasksView
+            tasks={tasksFromNotes}
+            onSelectNote={handleSelectNoteFromTasks}
+            onCreateTask={handleCreateTaskFromTasks}
+            onToggleTask={handleToggleTaskStatus}
+          />
+        ) : (
+          <>
+            <div className={`
+              flex-col h-full bg-background border-r
+              ${selectedNoteId && activeTab !== 'notebooks' ? 'hidden md:flex md:w-80' : 'flex w-full md:w-80'}
+              flex-shrink-0
+            `}>
+              {activeTab === 'notebooks' ? (
+                <NotebookList
+                  notebooks={notebooks}
+                  onCreateNotebook={handleCreateNotebook}
+                  onDeleteNotebook={handleDeleteNotebook}
+                  onSelectNotebook={handleSelectNotebook}
+                  onOpenMenu={() => setIsMobileMenuOpen(true)}
+                />
+              ) : (
+                <NoteList
+                  notes={visibleNotes}
+                  selectedNoteId={selectedNoteId}
+                  onSelectNote={handleSelectNote}
+                  searchQuery={searchQuery}
+                  onOpenMenu={() => setIsMobileMenuOpen(true)}
+                  notebookName={activeTitle}
+                />
+              )}
             </div>
-          )}
-        </div>
+
+            <div className={`flex-1 h-full bg-background relative 
+              ${(!selectedNoteId && activeTab !== 'notebooks') ? 'hidden md:flex' : ''}
+              ${(activeTab === 'notebooks') ? 'hidden md:flex' : ''}
+              ${(selectedNoteId && activeTab !== 'notebooks') ? 'flex w-full' : ''}
+            `}>
+              {viewMode === ViewMode.EDITOR && selectedNote ? (
+                <Editor
+                  note={selectedNote}
+                  onUpdate={handleUpdateNote}
+                  onDelete={handleDeleteNote}
+                  onBack={handleBackToList}
+                />
+              ) : (
+                <div className="h-full w-full flex flex-col items-center justify-center bg-muted/20 text-muted-foreground p-8 text-center">
+                   <div className="md:hidden w-full absolute top-4 left-4">
+                      <Button variant="ghost" size="icon" onClick={() => setIsMobileMenuOpen(true)}>
+                        <Menu size={24} />
+                      </Button>
+                   </div>
+                   
+                   {activeTab === 'notebooks' ? (
+                     <>
+                       <div className="bg-primary/10 p-6 rounded-full mb-6">
+                          <Coffee size={64} className="text-primary" />
+                       </div>
+                       <h1 className="text-2xl font-bold text-foreground mb-2">Gerencie seus Cadernos</h1>
+                       <p className="max-w-md">
+                         Selecione um caderno na barra lateral ou na lista para ver suas notas.
+                       </p>
+                     </>
+                   ) : (
+                     <>
+                       <div className="bg-primary/10 p-6 rounded-full mb-6">
+                          <Coffee size={64} className="text-primary" />
+                       </div>
+                       <h1 className="text-2xl font-bold text-foreground mb-2">Bem-vindo ao ForeverNote</h1>
+                       <p className="max-w-md mb-8">
+                         {activeNotebookId || activeTab === 'shortcuts' || activeTab.startsWith('tag:')
+                            ? "A lista esta vazia ou nenhuma nota selecionada."
+                            : "Selecione uma nota ou crie uma nova para comecar."}
+                       </p>
+                       <Button 
+                          onClick={handleNewNote}
+                          size="lg"
+                          className="gap-2"
+                       >
+                         Criar Nova Nota
+                       </Button>
+                     </>
+                   )}
+                </div>
+              )}
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

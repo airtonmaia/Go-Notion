@@ -1,9 +1,10 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
 import TaskList from '@tiptap/extension-task-list';
 import TaskItem from '@tiptap/extension-task-item';
+import Link from '@tiptap/extension-link';
 import { 
   Bold, 
   Italic, 
@@ -18,7 +19,14 @@ import {
   Undo,
   Redo,
   Minus,
-  CheckSquare
+  CheckSquare,
+  Plus,
+  Link as LinkIcon,
+  Image,
+  File,
+  Mic,
+  PenTool,
+  Code2
 } from 'lucide-react';
 import { cn } from './ui/utils';
 import { Button } from './ui/Button';
@@ -58,6 +66,8 @@ const ToolbarButton = ({
 );
 
 const TiptapEditor: React.FC<TiptapEditorProps> = ({ content, onChange, setEditorInstance, editable = true }) => {
+  const [showInsertMenu, setShowInsertMenu] = useState(false);
+
   const editor = useEditor({
     extensions: [
       StarterKit,
@@ -68,6 +78,11 @@ const TiptapEditor: React.FC<TiptapEditorProps> = ({ content, onChange, setEdito
       TaskList,
       TaskItem.configure({
         nested: true,
+      }),
+      Link.configure({
+        openOnClick: true,
+        linkOnPaste: true,
+        autolink: true,
       }),
     ],
     content: content,
@@ -115,10 +130,162 @@ const TiptapEditor: React.FC<TiptapEditorProps> = ({ content, onChange, setEdito
     return null;
   }
 
+  const insertTask = () => {
+    editor
+      .chain()
+      .focus()
+      .insertContent('<ul data-type="taskList"><li data-type="taskItem" data-checked="false"><p>Nova tarefa</p></li></ul>')
+      .run();
+  };
+
+  const insertDivider = () => editor.chain().focus().setHorizontalRule().run();
+  const insertQuote = () => editor.chain().focus().toggleBlockquote().run();
+  const insertHeading = (level: 1 | 2 | 3) => editor.chain().focus().setHeading({ level }).run();
+  const insertParagraph = () => editor.chain().focus().setParagraph().run();
+  const insertBullet = () => editor.chain().focus().toggleBulletList().run();
+  const insertOrdered = () => editor.chain().focus().toggleOrderedList().run();
+  const insertTaskList = () => editor.chain().focus().toggleTaskList().run();
+  const insertCheckbox = () => {
+    editor
+      .chain()
+      .focus()
+      .insertContent('<ul data-type="taskList"><li data-type="taskItem" data-checked="false"><p>Caixa de seleção</p></li></ul>')
+      .run();
+  };
+
+  const insertLink = (text?: string, href?: string) => {
+    const url = href || window.prompt('Insira a URL do link');
+    if (!url) return;
+    const display = text || window.prompt('Texto do link') || url;
+    editor.chain().focus().insertContent(`<a href="${url}" target="_blank" rel="noopener noreferrer">${display}</a>`).run();
+  };
+
+  const toggleLinkOnSelection = () => {
+    const selection = editor.state.doc.textBetween(
+      editor.state.selection.from,
+      editor.state.selection.to,
+      ' '
+    ).trim();
+    const previousUrl = editor.getAttributes('link').href;
+    const assumedUrl = previousUrl || selection || '';
+    const url = window.prompt('Insira a URL do link (deixe vazio para remover)', assumedUrl);
+    if (url === null) return;
+    if (url.trim() === '') {
+      editor.chain().focus().extendMarkRange('link').unsetLink().run();
+      return;
+    }
+    editor.chain().focus().extendMarkRange('link').setLink({ href: url.trim() }).run();
+  };
+
+  const insertImage = () => {
+    const url = window.prompt('Insira a URL da imagem');
+    if (!url) return;
+    editor.chain().focus().insertContent(`<img src="${url}" alt="Imagem" />`).run();
+  };
+
+  const insertFile = () => {
+    const url = window.prompt('Insira a URL do arquivo');
+    if (!url) return;
+    const name = window.prompt('Nome do arquivo') || 'Arquivo';
+    editor.chain().focus().insertContent(`<a href="${url}" target="_blank" rel="noopener noreferrer">📎 ${name}</a>`).run();
+  };
+
+  const insertRecording = () => {
+    editor.chain().focus().insertContent('🎙️ Gravação (adicione o link/nota aqui)').run();
+  };
+
+  const insertSketch = () => {
+    editor.chain().focus().insertContent('✏️ Esboço (adicione o link ou imagem aqui)').run();
+  };
+
+  const insertCodeBlock = () => editor.chain().focus().toggleCodeBlock().run();
+
+  const closeMenu = () => setShowInsertMenu(false);
+
   return (
     <div className="flex flex-col w-full h-full">
       {editable && (
-        <div className="border-b bg-background/95 backdrop-blur sticky top-0 z-10 px-4 py-2 flex flex-wrap gap-1 items-center animate-in slide-in-from-top-1">
+      <div className="border-b bg-background/95 backdrop-blur sticky top-0 z-10 px-4 py-2 flex flex-wrap gap-1 items-center animate-in slide-in-from-top-1">
+        {editable && (
+          <div className="relative">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="gap-2"
+              onClick={() => setShowInsertMenu((prev) => !prev)}
+            >
+              <Plus size={16} />
+              Inserir
+            </Button>
+
+            {showInsertMenu && (
+              <>
+                <div className="fixed inset-0 z-30" onClick={closeMenu} />
+                <div className="absolute left-0 mt-2 w-64 rounded-md border bg-popover text-popover-foreground shadow-lg z-40 overflow-hidden">
+                  <div className="px-3 py-2 border-b text-xs font-semibold text-muted-foreground">
+                    Inserções rápidas
+                  </div>
+                  <div className="max-h-96 overflow-y-auto">
+                    <button className="w-full text-left px-3 py-2 text-sm hover:bg-accent flex items-center gap-2" onClick={() => { insertTask(); closeMenu(); }}>
+                      <CheckSquare size={14} /> Nova tarefa
+                    </button>
+                    <button className="w-full text-left px-3 py-2 text-sm hover:bg-accent flex items-center gap-2" onClick={() => { insertLink('Link para nota', '#'); closeMenu(); }}>
+                      <LinkIcon size={14} /> Link para nota
+                    </button>
+                    <button className="w-full text-left px-3 py-2 text-sm hover:bg-accent flex items-center gap-2" onClick={() => { insertLink(); closeMenu(); }}>
+                      <LinkIcon size={14} /> Link
+                    </button>
+                    <button className="w-full text-left px-3 py-2 text-sm hover:bg-accent flex items-center gap-2" onClick={() => { editor.chain().focus().toggleBulletList().run(); closeMenu(); }}>
+                      <List size={14} /> Lista com marcadores
+                    </button>
+                    <button className="w-full text-left px-3 py-2 text-sm hover:bg-accent flex items-center gap-2" onClick={() => { insertTaskList(); closeMenu(); }}>
+                      <CheckSquare size={14} /> Lista de verificação
+                    </button>
+                    <button className="w-full text-left px-3 py-2 text-sm hover:bg-accent flex items-center gap-2" onClick={() => { insertOrdered(); closeMenu(); }}>
+                      <ListOrdered size={14} /> Lista numerada
+                    </button>
+                    <button className="w-full text-left px-3 py-2 text-sm hover:bg-accent flex items-center gap-2" onClick={() => { insertCheckbox(); closeMenu(); }}>
+                      <CheckSquare size={14} /> Caixa de seleção
+                    </button>
+                    <button className="w-full text-left px-3 py-2 text-sm hover:bg-accent flex items-center gap-2" onClick={() => { insertHeading(1); closeMenu(); }}>
+                      <Heading1 size={14} /> Cabeçalho grande
+                    </button>
+                    <button className="w-full text-left px-3 py-2 text-sm hover:bg-accent flex items-center gap-2" onClick={() => { insertHeading(2); closeMenu(); }}>
+                      <Heading2 size={14} /> Cabeçalho médio
+                    </button>
+                    <button className="w-full text-left px-3 py-2 text-sm hover:bg-accent flex items-center gap-2" onClick={() => { insertHeading(3); closeMenu(); }}>
+                      <Heading3 size={14} /> Cabeçalho pequeno
+                    </button>
+                    <button className="w-full text-left px-3 py-2 text-sm hover:bg-accent flex items-center gap-2" onClick={() => { insertParagraph(); closeMenu(); }}>
+                      <PenTool size={14} /> Texto normal
+                    </button>
+                    <button className="w-full text-left px-3 py-2 text-sm hover:bg-accent flex items-center gap-2" onClick={() => { insertDivider(); closeMenu(); }}>
+                      <Minus size={14} /> Divisor
+                    </button>
+                    <button className="w-full text-left px-3 py-2 text-sm hover:bg-accent flex items-center gap-2" onClick={() => { insertQuote(); closeMenu(); }}>
+                      <Quote size={14} /> Citação
+                    </button>
+                    <button className="w-full text-left px-3 py-2 text-sm hover:bg-accent flex items-center gap-2" onClick={() => { insertImage(); closeMenu(); }}>
+                      <Image size={14} /> Imagem
+                    </button>
+                    <button className="w-full text-left px-3 py-2 text-sm hover:bg-accent flex items-center gap-2" onClick={() => { insertFile(); closeMenu(); }}>
+                      <File size={14} /> Arquivo
+                    </button>
+                    <button className="w-full text-left px-3 py-2 text-sm hover:bg-accent flex items-center gap-2" onClick={() => { insertRecording(); closeMenu(); }}>
+                      <Mic size={14} /> Gravar
+                    </button>
+                    <button className="w-full text-left px-3 py-2 text-sm hover:bg-accent flex items-center gap-2" onClick={() => { insertSketch(); closeMenu(); }}>
+                      <PenTool size={14} /> Esboço
+                    </button>
+                    <button className="w-full text-left px-3 py-2 text-sm hover:bg-accent flex items-center gap-2" onClick={() => { insertCodeBlock(); closeMenu(); }}>
+                      <Code2 size={14} /> Bloco de código
+                    </button>
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        )}
           <ToolbarButton
             onClick={() => editor.chain().focus().toggleBold().run()}
             isActive={editor.isActive('bold')}
@@ -187,6 +354,13 @@ const TiptapEditor: React.FC<TiptapEditorProps> = ({ content, onChange, setEdito
             title="Lista de tarefas"
           >
             <CheckSquare size={16} />
+          </ToolbarButton>
+          <ToolbarButton
+            onClick={toggleLinkOnSelection}
+            isActive={editor.isActive('link')}
+            title="Transformar em link"
+          >
+            <LinkIcon size={16} />
           </ToolbarButton>
 
           <div className="w-px h-6 bg-border mx-1" />

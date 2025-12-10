@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Search, Star, Trash2, PlusCircle, Settings, BookA, ChevronRight, ChevronDown, Plus, Moon, Sun, LogOut, Tag, PlusSquare } from 'lucide-react';
+import { Search, Star, Trash2, PlusCircle, Settings, BookA, ChevronRight, ChevronDown, Plus, Moon, Sun, LogOut, Tag, PlusSquare, CheckSquare } from 'lucide-react';
 import { Notebook } from '../types';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
@@ -89,6 +89,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   const menuItems = [
     { id: 'notes', label: 'Notas Recentes', icon: BookA },
     { id: 'shortcuts', label: 'Favoritos', icon: Star },
+    { id: 'tasks', label: 'Tarefas', icon: CheckSquare },
   ];
 
   const handleCreateSubmit = (e: React.FormEvent) => {

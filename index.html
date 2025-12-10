@@ -136,10 +136,34 @@
       
       .tiptap ul[data-type="taskList"] input[type="checkbox"] {
         cursor: pointer;
-        border-radius: 0.3em;
-        width: 1.1em;
-        height: 1.1em;
-        accent-color: hsl(var(--primary));
+        appearance: none;
+        -webkit-appearance: none;
+        width: 1.15em;
+        height: 1.15em;
+        border-radius: 9999px;
+        border: 1.5px solid hsl(var(--border));
+        display: grid;
+        place-items: center;
+        background: hsl(var(--background));
+        transition: all 120ms ease-in-out;
+      }
+
+      .tiptap ul[data-type="taskList"] input[type="checkbox"]:checked {
+        background: #10b981; /* emerald tone to match Tasks grid */
+        border-color: #10b981;
+        box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+      }
+
+      .tiptap ul[data-type="taskList"] input[type="checkbox"]::after {
+        content: "✓";
+        color: white;
+        font-size: 0.75em;
+        transform: scale(0);
+        transition: transform 120ms ease-in-out;
+      }
+
+      .tiptap ul[data-type="taskList"] input[type="checkbox"]:checked::after {
+        transform: scale(1);
       }
     </style>
     <script>
