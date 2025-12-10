@@ -1,0 +1,5 @@
+{
+  "name": "ForeverNote AI",
+  "description": "A powerful, note-taking application inspired by Evernote, featuring organization tools and integrated Gemini AI for summarizing, content generation, and smart editing.",
+  "requestFramePermissions": []
+}

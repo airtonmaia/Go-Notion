@@ -1,0 +1,30 @@
+
+import { supabase } from './supabase';
+
+export const signIn = async (email: string, pass: string) => {
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email,
+    password: pass,
+  });
+  if (error) throw error;
+  return data;
+};
+
+export const signUp = async (email: string, pass: string) => {
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password: pass,
+  });
+  if (error) throw error;
+  return data;
+};
+
+export const signOut = async () => {
+  const { error } = await supabase.auth.signOut();
+  if (error) throw error;
+};
+
+export const getCurrentUser = async () => {
+  const { data } = await supabase.auth.getUser();
+  return data.user;
+};
