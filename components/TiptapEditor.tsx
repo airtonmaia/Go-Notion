@@ -2,6 +2,8 @@ import React, { useEffect } from 'react';
 import { useEditor, EditorContent } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
 import Placeholder from '@tiptap/extension-placeholder';
+import TaskList from '@tiptap/extension-task-list';
+import TaskItem from '@tiptap/extension-task-item';
 import { 
   Bold, 
   Italic, 
@@ -15,7 +17,8 @@ import {
   Heading3,
   Undo,
   Redo,
-  Minus
+  Minus,
+  CheckSquare
 } from 'lucide-react';
 import { cn } from './ui/utils';
 import { Button } from './ui/Button';
@@ -61,6 +64,10 @@ const TiptapEditor: React.FC<TiptapEditorProps> = ({ content, onChange, setEdito
       Placeholder.configure({
         placeholder: 'Comece a escrever...',
         emptyEditorClass: 'is-editor-empty',
+      }),
+      TaskList,
+      TaskItem.configure({
+        nested: true,
       }),
     ],
     content: content,
@@ -173,6 +180,13 @@ const TiptapEditor: React.FC<TiptapEditorProps> = ({ content, onChange, setEdito
             title="Lista numerada"
           >
             <ListOrdered size={16} />
+          </ToolbarButton>
+          <ToolbarButton
+            onClick={() => editor.chain().focus().toggleTaskList().run()}
+            isActive={editor.isActive('taskList')}
+            title="Lista de tarefas"
+          >
+            <CheckSquare size={16} />
           </ToolbarButton>
 
           <div className="w-px h-6 bg-border mx-1" />

@@ -9,7 +9,7 @@ import AccountSettings from './components/AccountSettings';
 import { Note, Notebook, ViewMode } from './types';
 import * as StorageService from './services/storage';
 import { supabase } from './services/supabase';
-import { Coffee, Menu, Loader2 } from 'lucide-react';
+import { Coffee, Menu, Loader2, Tag } from 'lucide-react';
 import { Button } from './components/ui/Button';
 
 const App: React.FC = () => {
@@ -21,7 +21,7 @@ const App: React.FC = () => {
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
   const [activeNotebookId, setActiveNotebookId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>(ViewMode.EMPTY);
-  const [activeTab, setActiveTab] = useState('notes');
+  const [activeTab, setActiveTab] = useState('notes'); // 'notes', 'shortcuts', 'trash', 'notebooks', or 'tag:TagName'
   const [searchQuery, setSearchQuery] = useState('');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
@@ -29,6 +29,9 @@ const App: React.FC = () => {
     const saved = localStorage.getItem('theme');
     return saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches);
   });
+
+  // Derived state: Unique tags from all notes
+  const allTags = Array.from(new Set(notes.flatMap(note => note.tags || []))).sort();
 
   // Auth Listener
   useEffect(() => {
@@ -89,17 +92,25 @@ const App: React.FC = () => {
   const handleNewNote = async () => {
     const targetNotebookId = activeNotebookId || (notebooks.length > 0 ? notebooks[0].id : null);
     
-    // Safety check, although createNote handles this or we create a default notebook
+    // Safety check
     if (!targetNotebookId) {
         alert("Crie um caderno primeiro.");
         return;
     }
 
     const newNote = await StorageService.createNote(targetNotebookId);
+    
+    // If currently filtering by a tag, auto-add that tag to the new note
+    if (activeTab.startsWith('tag:')) {
+      const tagToApply = activeTab.replace('tag:', '');
+      newNote.tags = [tagToApply];
+      await StorageService.saveNote(newNote); // Update immediately
+    }
+
     setNotes([newNote, ...notes]);
     setSelectedNoteId(newNote.id);
     setViewMode(ViewMode.EDITOR);
-    setActiveTab('notes');
+    // Keep the current tab active so the user stays in context
     setIsMobileMenuOpen(false);
   };
 
@@ -116,9 +127,8 @@ const App: React.FC = () => {
       
       // Select next logic
       if (remaining.length > 0) {
-           const visible = activeNotebookId 
-              ? remaining.filter(n => n.notebookId === activeNotebookId)
-              : remaining;
+           // Try to find a note in the current view context
+           const visible = filterNotes(remaining);
            
            if (visible.length > 0) {
              setSelectedNoteId(visible[0].id);
@@ -155,6 +165,14 @@ const App: React.FC = () => {
     }
   };
 
+  const handleSelectTag = (tag: string) => {
+    setActiveTab(`tag:${tag}`);
+    setActiveNotebookId(null);
+    if (window.innerWidth < 768) {
+      setIsMobileMenuOpen(false);
+    }
+  };
+
   const handleSidebarTabChange = (tab: string) => {
     setActiveTab(tab);
     if (tab === 'notes') {
@@ -170,6 +188,32 @@ const App: React.FC = () => {
   const handleBackToList = () => {
     setSelectedNoteId(null);
     setViewMode(ViewMode.EMPTY);
+  };
+
+  // Helper to filter notes based on current state
+  const filterNotes = (noteList: Note[]) => {
+    return noteList.filter(n => {
+      let matchesContext = true;
+      
+      if (activeTab === 'shortcuts') {
+        matchesContext = n.isFavorite === true;
+      } else if (activeTab === 'notes') {
+         if (activeNotebookId) {
+           matchesContext = n.notebookId === activeNotebookId;
+         }
+      } else if (activeTab === 'trash') {
+         matchesContext = false; 
+      } else if (activeTab.startsWith('tag:')) {
+         const tag = activeTab.replace('tag:', '');
+         matchesContext = n.tags && n.tags.includes(tag);
+      }
+  
+      const matchesSearch = searchQuery 
+        ? (n.title.toLowerCase().includes(searchQuery.toLowerCase()) || n.content.toLowerCase().includes(searchQuery.toLowerCase()))
+        : true;
+        
+      return matchesContext && matchesSearch;
+    });
   };
 
   // Loading Screen
@@ -202,6 +246,8 @@ const App: React.FC = () => {
           activeNotebookId={activeNotebookId}
           onSelectNotebook={handleSelectNotebook}
           onCreateNotebook={handleCreateNotebook}
+          tags={allTags}
+          onSelectTag={handleSelectTag}
           isDarkMode={isDarkMode}
           toggleTheme={() => setIsDarkMode(!isDarkMode)}
           onOpenSettings={() => setViewMode(ViewMode.ACCOUNT)}
@@ -214,17 +260,15 @@ const App: React.FC = () => {
   }
 
   const selectedNote = notes.find(n => n.id === selectedNoteId);
-  
-  const visibleNotes = notes.filter(n => {
-    const matchesNotebook = activeNotebookId ? n.notebookId === activeNotebookId : true;
-    const matchesSearch = searchQuery 
-      ? (n.title.toLowerCase().includes(searchQuery.toLowerCase()) || n.content.toLowerCase().includes(searchQuery.toLowerCase()))
-      : true;
-    return matchesNotebook && matchesSearch;
-  });
+  const visibleNotes = filterNotes(notes);
   
   const activeNotebookObj = activeNotebookId ? notebooks.find(n => n.id === activeNotebookId) : null;
-  const activeNotebookName = activeNotebookObj ? `${activeNotebookObj.emoji || ''} ${activeNotebookObj.name}` : null;
+  
+  // Determine header title
+  let activeTitle = 'Todas as Notas';
+  if (activeTab === 'shortcuts') activeTitle = 'Favoritos';
+  else if (activeTab.startsWith('tag:')) activeTitle = `Etiqueta: ${activeTab.replace('tag:', '')}`;
+  else if (activeNotebookId && activeNotebookObj) activeTitle = `${activeNotebookObj.emoji || ''} ${activeNotebookObj.name}`;
 
   return (
     <div className="flex h-screen bg-background text-foreground overflow-hidden font-sans">
@@ -240,6 +284,8 @@ const App: React.FC = () => {
         activeNotebookId={activeNotebookId}
         onSelectNotebook={handleSelectNotebook}
         onCreateNotebook={handleCreateNotebook}
+        tags={allTags}
+        onSelectTag={handleSelectTag}
         isDarkMode={isDarkMode}
         toggleTheme={() => setIsDarkMode(!isDarkMode)}
         onOpenSettings={() => setViewMode(ViewMode.ACCOUNT)}
@@ -248,7 +294,7 @@ const App: React.FC = () => {
       <div className="flex-1 flex h-full w-full">
         <div className={`
           flex-col h-full bg-background border-r
-          ${selectedNoteId && activeTab === 'notes' ? 'hidden md:flex md:w-80' : 'flex w-full md:w-80'}
+          ${selectedNoteId && activeTab !== 'notebooks' ? 'hidden md:flex md:w-80' : 'flex w-full md:w-80'}
           flex-shrink-0
         `}>
           {activeTab === 'notebooks' ? (
@@ -266,7 +312,7 @@ const App: React.FC = () => {
               onSelectNote={handleSelectNote}
               searchQuery={searchQuery}
               onOpenMenu={() => setIsMobileMenuOpen(true)}
-              notebookName={activeNotebookName || undefined}
+              notebookName={activeTitle}
             />
           )}
         </div>
@@ -274,9 +320,9 @@ const App: React.FC = () => {
         <div className={`flex-1 h-full bg-background relative 
           ${(!selectedNoteId && activeTab !== 'notebooks') ? 'hidden md:flex' : ''}
           ${(activeTab === 'notebooks') ? 'hidden md:flex' : ''}
-          ${(selectedNoteId && activeTab === 'notes') ? 'flex w-full' : ''}
+          ${(selectedNoteId && activeTab !== 'notebooks') ? 'flex w-full' : ''}
         `}>
-          {viewMode === ViewMode.EDITOR && selectedNote && activeTab === 'notes' ? (
+          {viewMode === ViewMode.EDITOR && selectedNote ? (
             <Editor 
               note={selectedNote} 
               onUpdate={handleUpdateNote}
@@ -308,8 +354,8 @@ const App: React.FC = () => {
                    </div>
                    <h1 className="text-2xl font-bold text-foreground mb-2">Bem-vindo ao ForeverNote</h1>
                    <p className="max-w-md mb-8">
-                     {activeNotebookId 
-                        ? `O caderno "${activeNotebookName}" está vazio.` 
+                     {activeNotebookId || activeTab === 'shortcuts' || activeTab.startsWith('tag:')
+                        ? "A lista está vazia ou nenhuma nota selecionada." 
                         : "Selecione uma nota ou crie uma nova para começar."}
                    </p>
                    <Button 

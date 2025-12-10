@@ -1,6 +1,6 @@
 
 import { supabase } from './supabase';
-import { Note, Notebook } from '../types';
+import { Note, Notebook, NoteRevision } from '../types';
 
 const generateId = () => crypto.randomUUID();
 
@@ -13,6 +13,7 @@ const mapNoteFromDB = (dbNote: any): Note => ({
   excerpt: dbNote.excerpt || '',
   tags: dbNote.tags || [],
   notebookId: dbNote.notebook_id,
+  isFavorite: dbNote.is_favorite || false,
   updatedAt: new Date(dbNote.updated_at).getTime(),
   createdAt: new Date(dbNote.created_at).getTime(),
 });
@@ -25,6 +26,7 @@ const mapNoteToDB = (note: Note, userId: string) => ({
   excerpt: note.excerpt,
   tags: note.tags,
   notebook_id: note.notebookId,
+  is_favorite: note.isFavorite || false,
   updated_at: new Date(note.updatedAt).toISOString(),
   created_at: new Date(note.createdAt).toISOString(),
 });
@@ -57,7 +59,7 @@ export const getNotes = async (): Promise<Note[]> => {
     .order('updated_at', { ascending: false });
 
   if (error) {
-    console.error('Error fetching notes:', error);
+    console.error('Error fetching notes:', error.message);
     return [];
   }
   
@@ -72,12 +74,42 @@ export const saveNote = async (note: Note): Promise<void> => {
     .from('notes')
     .upsert(mapNoteToDB(note, user.id));
     
-  if (error) console.error('Error saving note to Supabase:', error);
+  if (error) {
+    // Log the full error message for debugging
+    console.error('Error saving note to Supabase:', JSON.stringify(error, null, 2));
+  }
 };
 
 export const deleteNote = async (id: string): Promise<void> => {
   const { error } = await supabase.from('notes').delete().eq('id', id);
-  if (error) console.error('Error deleting note from Supabase:', error);
+  if (error) console.error('Error deleting note from Supabase:', error.message);
+};
+
+// --- REVISIONS (HISTORY) ---
+
+export const getNoteHistory = async (noteId: string): Promise<NoteRevision[]> => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return [];
+
+  // Assuming 'note_revisions' table exists (see SQL instructions)
+  const { data, error } = await supabase
+    .from('note_revisions')
+    .select('*')
+    .eq('note_id', noteId)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching revisions:', error.message);
+    return [];
+  }
+
+  return data.map((rev: any) => ({
+    id: rev.id,
+    noteId: rev.note_id,
+    title: rev.title || '',
+    content: rev.content || '',
+    createdAt: rev.created_at
+  }));
 };
 
 // --- NOTEBOOKS ---
@@ -92,7 +124,7 @@ export const getNotebooks = async (): Promise<Notebook[]> => {
       .eq('user_id', user.id);
 
   if (error) {
-    console.error('Error fetching notebooks:', error);
+    console.error('Error fetching notebooks:', error.message);
     return [];
   }
   
@@ -122,7 +154,7 @@ export const createNotebook = async (name: string, emoji: string = '📓', paren
     .insert(mapNotebookToDB(newNotebook, user.id));
     
   if (error) {
-    console.error('Error creating notebook in Supabase:', error);
+    console.error('Error creating notebook in Supabase:', error.message);
     throw error;
   }
 
@@ -130,17 +162,12 @@ export const createNotebook = async (name: string, emoji: string = '📓', paren
 };
 
 export const deleteNotebook = async (id: string): Promise<void> => {
-  // Logic: Move notes to another notebook or delete them? 
-  // For simplicity: Notes in deleted notebook become "Orphaned" (null notebook_id) or deleted.
-  // We'll set notebook_id to null for safety in this implementation if we can, or just let DB handle cascade.
-  // Based on SQL 'on delete set null', we just delete the notebook.
-  
   const { error } = await supabase
       .from('notebooks')
       .delete()
       .eq('id', id);
         
-  if (error) console.error('Error deleting notebook in Supabase:', error);
+  if (error) console.error('Error deleting notebook in Supabase:', error.message);
 };
 
 export const createNote = async (notebookId: string): Promise<Note> => {
@@ -151,6 +178,7 @@ export const createNote = async (notebookId: string): Promise<Note> => {
     excerpt: '',
     tags: [],
     notebookId,
+    isFavorite: false,
     updatedAt: Date.now(),
     createdAt: Date.now(),
   };

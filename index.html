@@ -1,0 +1,251 @@
+
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ForeverNote AI</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- PrismJS for Syntax Highlighting (One Dark Theme) -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-one-dark.min.css" rel="stylesheet" />
+    
+    <style>
+      :root {
+        --background: 0 0% 100%;
+        --foreground: 224 71.4% 4.1%;
+
+        --card: 0 0% 100%;
+        --card-foreground: 224 71.4% 4.1%;
+ 
+        --popover: 0 0% 100%;
+        --popover-foreground: 224 71.4% 4.1%;
+ 
+        /* Violet Theme - Light */
+        --primary: 262.1 83.3% 57.8%;
+        --primary-foreground: 210 40% 98%;
+ 
+        --secondary: 220 14.3% 95.9%;
+        --secondary-foreground: 220.9 39.3% 11%;
+ 
+        --muted: 220 14.3% 95.9%;
+        --muted-foreground: 220 8.9% 46.1%;
+ 
+        --accent: 220 14.3% 95.9%;
+        --accent-foreground: 220.9 39.3% 11%;
+ 
+        --destructive: 0 84.2% 60.2%;
+        --destructive-foreground: 210 40% 98%;
+
+        --border: 220 13% 91%;
+        --input: 220 13% 91%;
+        --ring: 262.1 83.3% 57.8%;
+ 
+        --radius: 0.5rem;
+      }
+ 
+      .dark {
+        --background: 224 71.4% 4.1%;
+        --foreground: 210 20% 98%;
+ 
+        --card: 224 71.4% 4.1%;
+        --card-foreground: 210 20% 98%;
+ 
+        --popover: 224 71.4% 4.1%;
+        --popover-foreground: 210 20% 98%;
+ 
+        /* Violet Theme - Dark */
+        --primary: 263.4 70% 50.4%;
+        --primary-foreground: 210 40% 98%;
+ 
+        --secondary: 215 27.9% 16.9%;
+        --secondary-foreground: 210 20% 98%;
+ 
+        --muted: 215 27.9% 16.9%;
+        --muted-foreground: 217.9 10.6% 64.9%;
+ 
+        --accent: 215 27.9% 16.9%;
+        --accent-foreground: 210 20% 98%;
+ 
+        --destructive: 0 62.8% 30.6%;
+        --destructive-foreground: 210 20% 98%;
+ 
+        --border: 215 27.9% 16.9%;
+        --input: 215 27.9% 16.9%;
+        --ring: 263.4 70% 50.4%;
+      }
+
+      *, ::before, ::after {
+        border-color: hsl(var(--border));
+      }
+      
+      body {
+        background-color: hsl(var(--background));
+        color: hsl(var(--foreground));
+        font-family: 'Inter', sans-serif;
+      }
+
+      /* Custom Scrollbar */
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: hsl(var(--border));
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: hsl(var(--muted-foreground));
+      }
+
+      /* Tiptap Editor Styles */
+      .tiptap {
+        outline: none !important;
+        font-family: 'Inter', sans-serif;
+      }
+      .tiptap p.is-editor-empty:first-child::before {
+        color: hsl(var(--muted-foreground));
+        content: attr(data-placeholder);
+        float: left;
+        height: 0;
+        pointer-events: none;
+      }
+      
+      /* Typography defaults for Editor */
+      .tiptap h1 { font-size: 2.25em; font-weight: 700; margin-top: 0.8em; margin-bottom: 0.4em; line-height: 1.2; }
+      .tiptap h2 { font-size: 1.75em; font-weight: 600; margin-top: 0.8em; margin-bottom: 0.4em; line-height: 1.3; }
+      .tiptap h3 { font-size: 1.4em; font-weight: 600; margin-top: 0.8em; margin-bottom: 0.4em; }
+      .tiptap p { margin-bottom: 0.8em; line-height: 1.7; }
+      .tiptap ul { list-style-type: disc; padding-left: 1.5em; margin-bottom: 1em; }
+      .tiptap ol { list-style-type: decimal; padding-left: 1.5em; margin-bottom: 1em; }
+      .tiptap blockquote { border-left: 3px solid hsl(var(--primary)); padding-left: 1em; color: hsl(var(--muted-foreground)); font-style: italic; margin-left: 0; margin-right: 0; }
+      .tiptap pre { background: #1e1e1e; color: #f8f8f2; padding: 0.75rem 1rem; border-radius: 0.5rem; font-family: 'Fira Code', monospace; margin-bottom: 1em; }
+      .tiptap code { background-color: hsl(var(--muted)); padding: 0.2em 0.4em; border-radius: 0.25em; font-size: 0.9em; font-family: monospace; }
+      .tiptap pre code { background: none; padding: 0; }
+      .tiptap b, .tiptap strong { font-weight: 700; }
+      .tiptap i, .tiptap em { font-style: italic; }
+      .tiptap s, .tiptap strike { text-decoration: line-through; }
+      .tiptap a { color: hsl(var(--primary)); text-decoration: underline; cursor: pointer; }
+
+      /* Task List Styles */
+      .tiptap ul[data-type="taskList"] {
+        list-style: none;
+        padding: 0;
+        margin-bottom: 1em;
+      }
+      
+      .tiptap ul[data-type="taskList"] li {
+        display: flex;
+        align-items: flex-start; /* Aligns checkbox with the first line of text */
+        margin-bottom: 0.5rem;
+      }
+
+      .tiptap ul[data-type="taskList"] li > label {
+        flex: 0 0 auto;
+        margin-right: 0.5rem;
+        user-select: none;
+        margin-top: 0.25rem; /* Optical adjustment for text alignment */
+      }
+
+      .tiptap ul[data-type="taskList"] li > div {
+        flex: 1 1 auto;
+      }
+      
+      .tiptap ul[data-type="taskList"] input[type="checkbox"] {
+        cursor: pointer;
+        border-radius: 0.3em;
+        width: 1.1em;
+        height: 1.1em;
+        accent-color: hsl(var(--primary));
+      }
+
+    </style>
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          container: {
+            center: true,
+            padding: "2rem",
+            screens: {
+              "2xl": "1400px",
+            },
+          },
+          extend: {
+            fontFamily: {
+              sans: ['Inter', 'sans-serif'],
+              mono: ['Fira Code', 'Consolas', 'monospace'],
+            },
+            colors: {
+              border: "hsl(var(--border))",
+              input: "hsl(var(--input))",
+              ring: "hsl(var(--ring))",
+              background: "hsl(var(--background))",
+              foreground: "hsl(var(--foreground))",
+              primary: {
+                DEFAULT: "hsl(var(--primary))",
+                foreground: "hsl(var(--primary-foreground))",
+              },
+              secondary: {
+                DEFAULT: "hsl(var(--secondary))",
+                foreground: "hsl(var(--secondary-foreground))",
+              },
+              destructive: {
+                DEFAULT: "hsl(var(--destructive))",
+                foreground: "hsl(var(--destructive-foreground))",
+              },
+              muted: {
+                DEFAULT: "hsl(var(--muted))",
+                foreground: "hsl(var(--muted-foreground))",
+              },
+              accent: {
+                DEFAULT: "hsl(var(--accent))",
+                foreground: "hsl(var(--accent-foreground))",
+              },
+              popover: {
+                DEFAULT: "hsl(var(--popover))",
+                foreground: "hsl(var(--popover-foreground))",
+              },
+              card: {
+                DEFAULT: "hsl(var(--card))",
+                foreground: "hsl(var(--card-foreground))",
+              },
+            },
+            borderRadius: {
+              lg: "var(--radius)",
+              md: "calc(var(--radius) - 2px)",
+              sm: "calc(var(--radius) - 4px)",
+            },
+          }
+        }
+      }
+    </script>
+  <script type="module" src="/index.tsx"></script>
+<script type="importmap">
+{
+  "imports": {
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.1/",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.32.0",
+    "clsx": "https://aistudiocdn.com/clsx@^2.1.1",
+    "react/": "https://aistudiocdn.com/react@^19.2.1/",
+    "react": "https://aistudiocdn.com/react@^19.2.1",
+    "tailwind-merge": "https://aistudiocdn.com/tailwind-merge@^3.4.0",
+    "lucide-react": "https://aistudiocdn.com/lucide-react@^0.559.0",
+    "@supabase/supabase-js": "https://aistudiocdn.com/@supabase/supabase-js@^2.87.1",
+    "@tiptap/extension-placeholder": "https://aistudiocdn.com/@tiptap/extension-placeholder@^3.13.0",
+    "@tiptap/react": "https://aistudiocdn.com/@tiptap/react@^3.13.0",
+    "@tiptap/starter-kit": "https://aistudiocdn.com/@tiptap/starter-kit@^3.13.0",
+    "@tiptap/extension-task-list": "https://aistudiocdn.com/@tiptap/extension-task-list@^3.13.0",
+    "@tiptap/extension-task-item": "https://aistudiocdn.com/@tiptap/extension-task-item@^3.13.0"
+  }
+}
+</script>
+</head>
+  <body class="h-screen overflow-hidden antialiased">
+    <div id="root"></div>
+  </body>
+</html>

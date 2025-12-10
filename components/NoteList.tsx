@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Note } from '../types';
 import { FileText, Clock, Menu, Book } from 'lucide-react';
@@ -74,7 +75,7 @@ const NoteList: React.FC<NoteListProps> = ({
                   <h3 className={cn("font-semibold leading-none", selectedNoteId === note.id ? "text-accent-foreground" : "text-foreground")}>
                     {note.title || 'Sem título'}
                   </h3>
-                  <p className="line-clamp-2 text-sm text-muted-foreground font-serif leading-snug">
+                  <p className="line-clamp-2 text-sm text-muted-foreground leading-snug">
                     {note.content || 'Comece a escrever...'}
                   </p>
                 </div>

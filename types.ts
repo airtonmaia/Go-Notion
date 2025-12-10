@@ -6,8 +6,17 @@ export interface Note {
   excerpt: string;
   tags: string[];
   notebookId: string;
+  isFavorite?: boolean; // New field
   updatedAt: number; // Timestamp
   createdAt: number; // Timestamp
+}
+
+export interface NoteRevision {
+  id: string;
+  noteId: string;
+  title: string;
+  content: string;
+  createdAt: string;
 }
 
 export interface Notebook {

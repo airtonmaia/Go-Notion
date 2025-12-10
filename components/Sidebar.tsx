@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Search, Star, Trash2, PlusCircle, Settings, BookA, ChevronRight, ChevronDown, Plus, Moon, Sun, LogOut } from 'lucide-react';
+import { Search, Star, Trash2, PlusCircle, Settings, BookA, ChevronRight, ChevronDown, Plus, Moon, Sun, LogOut, Tag, PlusSquare } from 'lucide-react';
 import { Notebook } from '../types';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
@@ -20,6 +20,8 @@ interface SidebarProps {
   activeNotebookId: string | null;
   onSelectNotebook: (id: string) => void;
   onCreateNotebook: (name: string, emoji: string, parentId: string | null) => void;
+  tags?: string[];
+  onSelectTag?: (tag: string) => void;
   isDarkMode: boolean;
   toggleTheme: () => void;
   onOpenSettings: () => void;
@@ -37,11 +39,14 @@ const Sidebar: React.FC<SidebarProps> = ({
   activeNotebookId,
   onSelectNotebook,
   onCreateNotebook,
+  tags = [],
+  onSelectTag,
   isDarkMode,
   toggleTheme,
   onOpenSettings
 }) => {
   const [isNotebooksExpanded, setIsNotebooksExpanded] = useState(true);
+  const [isTagsExpanded, setIsTagsExpanded] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newNotebookName, setNewNotebookName] = useState('');
   const [selectedParentId, setSelectedParentId] = useState<string>('');
@@ -82,7 +87,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   };
 
   const menuItems = [
-    { id: 'notes', label: 'Notas Recentes', icon: BookA }, // Usando BookA genérico aqui também
+    { id: 'notes', label: 'Notas Recentes', icon: BookA },
     { id: 'shortcuts', label: 'Favoritos', icon: Star },
   ];
 
@@ -90,7 +95,6 @@ const Sidebar: React.FC<SidebarProps> = ({
     e.preventDefault();
     if (newNotebookName.trim()) {
       const parent = selectedParentId === '' ? null : selectedParentId;
-      // Passamos um emoji padrão vazio ou fixo, já que vamos usar o ícone SVG
       onCreateNotebook(newNotebookName, '📓', parent); 
       setNewNotebookName('');
       setSelectedParentId('');
@@ -104,6 +108,11 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   const handleSelectNotebookInternal = (id: string) => {
     onSelectNotebook(id);
+    if (window.innerWidth < 768) onClose();
+  };
+  
+  const handleSelectTagInternal = (tag: string) => {
+    if (onSelectTag) onSelectTag(tag);
     if (window.innerWidth < 768) onClose();
   };
 
@@ -145,7 +154,6 @@ const Sidebar: React.FC<SidebarProps> = ({
                   {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                 </button>
 
-                {/* Ícone Padrão BookA */}
                 <BookA size={16} className={cn("flex-shrink-0", activeNotebookId === nb.id ? "text-primary" : "text-muted-foreground")} />
 
                 <span className="truncate flex-1">{nb.name}</span>
@@ -215,7 +223,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto px-2 space-y-1">
+        <nav className="flex-1 overflow-y-auto px-2 space-y-1 scrollbar-thin scrollbar-thumb-muted">
           {menuItems.map((item) => (
             <Button
               key={item.id}
@@ -241,22 +249,65 @@ const Sidebar: React.FC<SidebarProps> = ({
                 {isNotebooksExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                 Cadernos
               </button>
-              <Button 
-                variant="ghost" 
-                size="icon" 
-                className="h-5 w-5 opacity-0 group-hover:opacity-100"
-                onClick={() => {
-                  setSelectedParentId('');
-                  setShowCreateModal(true);
-                }}
-              >
-                <Plus size={14} />
-              </Button>
             </div>
 
             {isNotebooksExpanded && (
               <div className="space-y-0.5 animate-in slide-in-from-top-1 duration-200">
                  {renderNotebookTree(null)}
+                 
+                 {/* Standardized New Notebook Button */}
+                 <button
+                    onClick={() => {
+                      setSelectedParentId('');
+                      setShowCreateModal(true);
+                    }}
+                    className="w-full flex items-center gap-2 pl-[34px] py-1.5 text-sm rounded-sm text-emerald-600 hover:text-emerald-700 dark:text-emerald-500 dark:hover:text-emerald-400 hover:bg-muted/50 transition-colors"
+                 >
+                   <Plus size={16} />
+                   Novo Caderno
+                 </button>
+              </div>
+            )}
+          </div>
+
+          {/* Tags Section */}
+          <div className="mt-6">
+            <div className="flex items-center justify-between group px-2 py-1 mb-1">
+              <button 
+                onClick={() => setIsTagsExpanded(!isTagsExpanded)}
+                className="flex items-center gap-1 text-xs font-semibold text-muted-foreground hover:text-foreground uppercase tracking-wide flex-1 text-left"
+              >
+                {isTagsExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                Etiquetas
+              </button>
+            </div>
+
+            {isTagsExpanded && (
+              <div className="space-y-0.5 animate-in slide-in-from-top-1 duration-200">
+                {tags.map(tag => (
+                   <div 
+                      key={tag}
+                      onClick={() => handleSelectTagInternal(tag)}
+                      className={cn(
+                        "w-full flex items-center gap-2 pl-[34px] pr-2 py-1.5 rounded-sm text-sm transition-colors cursor-pointer",
+                        activeTab === `tag:${tag}`
+                          ? "bg-secondary text-secondary-foreground font-medium" 
+                          : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+                      )}
+                    >
+                      <Tag size={16} />
+                      <span className="truncate">{tag}</span>
+                   </div>
+                ))}
+                 
+                 {/* Standardized New Tag Button */}
+                 <button
+                    onClick={() => alert("Crie uma nota e adicione tags a ela para vê-las aqui.")}
+                    className="w-full flex items-center gap-2 pl-[34px] py-1.5 text-sm rounded-sm text-emerald-600 hover:text-emerald-700 dark:text-emerald-500 dark:hover:text-emerald-400 hover:bg-muted/50 transition-colors"
+                 >
+                   <Plus size={16} />
+                   Nova Etiqueta
+                 </button>
               </div>
             )}
           </div>
