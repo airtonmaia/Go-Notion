@@ -1,6 +1,7 @@
+
 import React, { useState } from 'react';
 import { Notebook } from '../types';
-import { Book, Plus, Trash2, Menu, CornerDownRight } from 'lucide-react';
+import { BookA, Plus, Trash2, Menu, CornerDownRight } from 'lucide-react';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
 import { cn } from './ui/utils';
@@ -13,8 +14,6 @@ interface NotebookListProps {
   onOpenMenu: () => void;
 }
 
-const EMOJI_OPTIONS = ['📓', '📘', '💼', '🏡', '✈️', '🍕', '💡', '🎓', '🚀', '🎨', '❤️', '✅'];
-
 const NotebookList: React.FC<NotebookListProps> = ({ 
   notebooks, 
   onSelectNotebook, 
@@ -23,7 +22,6 @@ const NotebookList: React.FC<NotebookListProps> = ({
   onOpenMenu 
 }) => {
   const [newNotebookName, setNewNotebookName] = useState('');
-  const [selectedEmoji, setSelectedEmoji] = useState(EMOJI_OPTIONS[0]);
   const [selectedParentId, setSelectedParentId] = useState<string>('');
   const [isCreating, setIsCreating] = useState(false);
 
@@ -31,7 +29,7 @@ const NotebookList: React.FC<NotebookListProps> = ({
     e.preventDefault();
     if (newNotebookName.trim()) {
       const parent = selectedParentId === '' ? null : selectedParentId;
-      onCreateNotebook(newNotebookName, selectedEmoji, parent);
+      onCreateNotebook(newNotebookName, '📓', parent);
       setNewNotebookName('');
       setSelectedParentId('');
       setIsCreating(false);
@@ -47,7 +45,7 @@ const NotebookList: React.FC<NotebookListProps> = ({
     children.forEach(nb => {
       options.push(
         <option key={nb.id} value={nb.id}>
-          {'\u00A0'.repeat(depth * 3)}{nb.emoji} {nb.name}
+          {'\u00A0'.repeat(depth * 3)}{nb.name}
         </option>
       );
       options = [...options, ...renderSelectOptions(nb.id, depth + 1)];
@@ -72,7 +70,7 @@ const NotebookList: React.FC<NotebookListProps> = ({
             >
               <div className="flex-1 flex items-center gap-3 text-left">
                 {depth > 0 && <CornerDownRight size={14} className="text-muted-foreground" />}
-                <span className="text-xl leading-none">{notebook.emoji || '📓'}</span>
+                <BookA size={18} className="text-muted-foreground group-hover:text-primary transition-colors" />
                 <span className="font-medium text-foreground group-hover:text-primary transition-colors">
                   {notebook.name}
                 </span>
@@ -136,13 +134,6 @@ const NotebookList: React.FC<NotebookListProps> = ({
                     <option value="">Raiz</option>
                     {renderSelectOptions()}
                   </select>
-                 <select 
-                    value={selectedEmoji} 
-                    onChange={(e) => setSelectedEmoji(e.target.value)}
-                    className="h-10 w-20 rounded-md border border-input bg-background px-2 text-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                 >
-                   {EMOJI_OPTIONS.map(e => <option key={e} value={e}>{e}</option>)}
-                 </select>
               </div>
             </div>
             <div className="flex justify-end gap-2">
@@ -156,7 +147,7 @@ const NotebookList: React.FC<NotebookListProps> = ({
       <div className="flex-1 overflow-y-auto p-4">
         {notebooks.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-64 text-muted-foreground p-6 text-center">
-            <Book size={48} className="mb-4 opacity-20" />
+            <BookA size={48} className="mb-4 opacity-20" />
             <p className="text-sm">Nenhum caderno encontrado.</p>
           </div>
         ) : (
