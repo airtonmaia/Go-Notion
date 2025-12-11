@@ -10,6 +10,7 @@ import { Button } from './ui/Button';
 import { cn } from './ui/utils';
 import TiptapEditor from './TiptapEditor';
 import HistoryModal from './HistoryModal';
+import ShareModal from './ShareModal';
 
 interface EditorProps {
   note: Note;
@@ -25,6 +26,7 @@ const Editor: React.FC<EditorProps> = ({ note, onUpdate, onDelete, onBack }) => 
   const [showSettingsMenu, setShowSettingsMenu] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [isReadOnly, setIsReadOnly] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
   const settingsMenuRef = useRef<HTMLDivElement>(null);
   
   // Reference to Tiptap Editor instance
@@ -172,7 +174,7 @@ const Editor: React.FC<EditorProps> = ({ note, onUpdate, onDelete, onBack }) => 
                 
                 {/* Header - Share */}
                 <div className="px-2 pb-1.5 border-b mb-1 flex gap-2">
-                    <Button size="sm" className="flex-1 bg-primary/90 hover:bg-primary text-xs h-8">
+                    <Button size="sm" className="flex-1 bg-primary/90 hover:bg-primary text-xs h-8" onClick={() => setShowShareModal(true)}>
                        Compartilhar
                     </Button>
                     <Button size="icon" variant="outline" className="h-8 w-8" onClick={copyLink} title="Copiar Link">
@@ -329,6 +331,14 @@ const Editor: React.FC<EditorProps> = ({ note, onUpdate, onDelete, onBack }) => 
         onClose={() => setShowHistoryModal(false)}
         noteId={note.id}
         onRestore={handleRestoreVersion}
+      />
+
+      <ShareModal
+        open={showShareModal}
+        onClose={() => setShowShareModal(false)}
+        resourceId={note.id}
+        resourceType="note"
+        title={note.title}
       />
     </div>
   );

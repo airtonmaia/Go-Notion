@@ -22,7 +22,6 @@ export interface NoteRevision {
 export interface Notebook {
   id: string;
   name: string;
-  emoji?: string;
   parentId?: string | null; // ID of the parent notebook, null if root
 }
 
@@ -42,6 +41,19 @@ export interface TaskItem {
   noteId: string;
   noteTitle: string;
   updatedAt: number;
+}
+
+export interface Share {
+  id: string;
+  resourceType: 'note' | 'notebook';
+  resourceId: string;
+  granteeEmail?: string | null;
+  granteeUserId?: string | null;
+  role?: 'viewer' | 'editor' | null;
+  publicRole?: 'viewer' | null;
+  publicToken?: string | null;
+  invitedBy?: string | null;
+  createdAt?: string;
 }
 
 export enum ViewMode {

@@ -9,7 +9,7 @@ import { cn } from './ui/utils';
 interface NotebookListProps {
   notebooks: Notebook[];
   onSelectNotebook: (id: string) => void;
-  onCreateNotebook: (name: string, emoji: string, parentId: string | null) => void;
+  onCreateNotebook: (name: string, parentId: string | null) => void;
   onDeleteNotebook: (id: string) => void;
   onOpenMenu: () => void;
 }
@@ -29,7 +29,7 @@ const NotebookList: React.FC<NotebookListProps> = ({
     e.preventDefault();
     if (newNotebookName.trim()) {
       const parent = selectedParentId === '' ? null : selectedParentId;
-      onCreateNotebook(newNotebookName, '📓', parent);
+      onCreateNotebook(newNotebookName, parent);
       setNewNotebookName('');
       setSelectedParentId('');
       setIsCreating(false);

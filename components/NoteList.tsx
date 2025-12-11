@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Note } from '../types';
-import { FileText, Clock, Menu, Book, CheckSquare } from 'lucide-react';
+import { FileText, Clock, Menu, CheckSquare } from 'lucide-react';
 import { Button } from './ui/Button';
 import { cn } from './ui/utils';
 
@@ -12,6 +12,7 @@ interface NoteListProps {
   searchQuery: string;
   onOpenMenu: () => void;
   notebookName?: string;
+  onShareNotebook?: () => void;
 }
 
 const NoteList: React.FC<NoteListProps> = ({ 
@@ -20,7 +21,8 @@ const NoteList: React.FC<NoteListProps> = ({
   onSelectNote, 
   searchQuery, 
   onOpenMenu,
-  notebookName
+  notebookName,
+  onShareNotebook
 }) => {
   const formatDate = (timestamp: number) => {
     return new Intl.DateTimeFormat('pt-BR', { month: 'short', day: 'numeric' }).format(new Date(timestamp));
@@ -64,14 +66,22 @@ const NoteList: React.FC<NoteListProps> = ({
           >
             <Menu size={20} />
           </Button>
-          <div className="w-full flex  flex  gap-3">
+          <div className="w-full flex flex-col gap-1">
             <div className="flex items-center gap-2">
               <h2 className="text-lg font-semibold tracking-tight text-foreground">
                 {notebookName || 'Todas as Notas'}
               </h2>
+              {notebookName && onShareNotebook && (
+                <button
+                  onClick={onShareNotebook}
+                  className="text-xs text-primary hover:underline"
+                  title="Compartilhar caderno"
+                >
+                  Compartilhar
+                </button>
+              )}
             </div>
             <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
-              {notebookName && <Book size={10} />}
               {notes.length} notas
             </p>
           </div>

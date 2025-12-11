@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Search, Star, Trash2, PlusCircle, Settings, BookA, ChevronRight, ChevronDown, Plus, Moon, Sun, LogOut, Tag, PlusSquare, CheckSquare } from 'lucide-react';
+import { Search, Star, Trash2, PlusCircle, Settings, BookA, ChevronRight, ChevronDown, Plus, Moon, Sun, LogOut, Tag, PlusSquare, CheckSquare, Users } from 'lucide-react';
 import { Notebook } from '../types';
 import { Button } from './ui/Button';
 import { Input } from './ui/Input';
@@ -19,7 +19,7 @@ interface SidebarProps {
   notebooks: Notebook[];
   activeNotebookId: string | null;
   onSelectNotebook: (id: string) => void;
-  onCreateNotebook: (name: string, emoji: string, parentId: string | null) => void;
+  onCreateNotebook: (name: string, parentId: string | null) => void;
   tags?: string[];
   onSelectTag?: (tag: string) => void;
   isDarkMode: boolean;
@@ -90,6 +90,7 @@ const Sidebar: React.FC<SidebarProps> = ({
     { id: 'notes', label: 'Notas Recentes', icon: BookA },
     { id: 'shortcuts', label: 'Favoritos', icon: Star },
     { id: 'tasks', label: 'Tarefas', icon: CheckSquare },
+    { id: 'shared', label: 'Compartilhado comigo', icon: Users },
   ];
 
   const handleCreateSubmit = (e: React.FormEvent) => {

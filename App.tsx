@@ -1,4 +1,4 @@
-﻿
+
 import React, { useState, useEffect, useMemo } from 'react';
 import Sidebar from './components/Sidebar';
 import NoteList from './components/NoteList';
@@ -7,6 +7,7 @@ import Editor from './components/Editor';
 import Auth from './components/Auth';
 import AccountSettings from './components/AccountSettings';
 import TasksView from './components/TasksView';
+import ShareModal from './components/ShareModal';
 import { Note, Notebook, TaskItem, ViewMode } from './types';
 import * as StorageService from './services/storage';
 import { supabase } from './services/supabase';
@@ -72,12 +73,14 @@ const App: React.FC = () => {
 
   const [notes, setNotes] = useState<Note[]>([]);
   const [notebooks, setNotebooks] = useState<Notebook[]>([]);
+  const [sharedNotes, setSharedNotes] = useState<Note[]>([]);
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
   const [activeNotebookId, setActiveNotebookId] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>(ViewMode.EMPTY);
-  const [activeTab, setActiveTab] = useState('notes'); // 'notes', 'shortcuts', 'trash', 'tasks', 'notebooks', or 'tag:TagName'
+  const [activeTab, setActiveTab] = useState('notes'); // 'notes', 'shortcuts', 'shared', 'trash', 'tasks', 'notebooks', or 'tag:TagName'
   const [searchQuery, setSearchQuery] = useState('');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [showNotebookShareModal, setShowNotebookShareModal] = useState(false);
   
   const [isDarkMode, setIsDarkMode] = useState(() => {
     const saved = localStorage.getItem('theme');
@@ -133,8 +136,10 @@ const App: React.FC = () => {
       if (session) {
         const loadedNotes = await StorageService.getNotes();
         const loadedNotebooks = await StorageService.getNotebooks();
+        const loadedShared = await StorageService.getSharedNotes();
         setNotes(loadedNotes);
         setNotebooks(loadedNotebooks);
+        setSharedNotes(loadedShared);
       }
     };
     loadData();
@@ -144,8 +149,10 @@ const App: React.FC = () => {
     if (session) {
         const loadedNotes = await StorageService.getNotes();
         const loadedNotebooks = await StorageService.getNotebooks();
+        const loadedShared = await StorageService.getSharedNotes();
         setNotes(loadedNotes);
         setNotebooks(loadedNotebooks);
+        setSharedNotes(loadedShared);
     }
   };
 
@@ -203,8 +210,8 @@ const App: React.FC = () => {
     }
   };
 
-  const handleCreateNotebook = async (name: string, emoji: string = 'ðŸ““', parentId: string | null = null) => {
-    await StorageService.createNotebook(name, emoji, parentId);
+  const handleCreateNotebook = async (name: string, parentId: string | null = null) => {
+    await StorageService.createNotebook(name, parentId);
     refreshData();
   };
 
@@ -236,6 +243,9 @@ const App: React.FC = () => {
   const handleSidebarTabChange = (tab: string) => {
     setActiveTab(tab);
     if (tab === 'notes') {
+      setActiveNotebookId(null);
+    }
+    if (tab === 'shared') {
       setActiveNotebookId(null);
     }
   };
@@ -394,8 +404,8 @@ const App: React.FC = () => {
     );
   }
 
-  const selectedNote = notes.find(n => n.id === selectedNoteId);
-  const visibleNotes = filterNotes(notes);
+  const selectedNote = (activeTab === 'shared' ? sharedNotes : notes).find(n => n.id === selectedNoteId);
+  const visibleNotes = activeTab === 'shared' ? filterNotes(sharedNotes) : filterNotes(notes);
   
   const activeNotebookObj = activeNotebookId ? notebooks.find(n => n.id === activeNotebookId) : null;
   
@@ -403,9 +413,10 @@ const App: React.FC = () => {
   let activeTitle = 'Todas as Notas';
   if (activeTab === 'shortcuts') activeTitle = 'Favoritos';
   else if (activeTab.startsWith('tag:')) activeTitle = `Etiqueta: ${activeTab.replace('tag:', '')}`;
-  else if (activeNotebookId && activeNotebookObj) activeTitle = `${activeNotebookObj.emoji || ''} ${activeNotebookObj.name}`;
+  else if (activeNotebookId && activeNotebookObj) activeTitle = `${activeNotebookObj.name}`;
 
   return (
+    <>
     <div className="flex h-screen bg-background text-foreground overflow-hidden font-sans">
       <Sidebar 
         onNewNote={handleNewNote} 
@@ -450,13 +461,14 @@ const App: React.FC = () => {
                   onOpenMenu={() => setIsMobileMenuOpen(true)}
                 />
               ) : (
-                <NoteList
+                <NoteList 
                   notes={visibleNotes}
-                  selectedNoteId={selectedNoteId}
+                  selectedNoteId={selectedNoteId} 
                   onSelectNote={handleSelectNote}
                   searchQuery={searchQuery}
                   onOpenMenu={() => setIsMobileMenuOpen(true)}
                   notebookName={activeTitle}
+                  onShareNotebook={activeNotebookId ? () => setShowNotebookShareModal(true) : undefined}
                 />
               )}
             </div>
@@ -518,6 +530,17 @@ const App: React.FC = () => {
         )}
       </div>
     </div>
+
+    {activeNotebookId && (
+      <ShareModal
+        open={showNotebookShareModal}
+        onClose={() => setShowNotebookShareModal(false)}
+        resourceId={activeNotebookId}
+        resourceType="notebook"
+        title={activeNotebookObj?.name || ''}
+      />
+    )}
+    </>
   );
 };
 
