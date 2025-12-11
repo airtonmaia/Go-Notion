@@ -100,10 +100,10 @@ const NoteList: React.FC<NoteListProps> = ({
                 )}
               >
                 <div className="flex flex-col gap-1 w-full">
-                  <h3 className={cn("font-semibold leading-none", selectedNoteId === note.id ? "text-accent-foreground" : "text-foreground")}>
+                  <h3 className={cn("font-semibold leading-none text-sm", selectedNoteId === note.id ? "text-accent-foreground" : "text-foreground")}>
                     {note.title || 'Sem titulo'}
                   </h3>
-                  <p className="line-clamp-2 text-sm text-muted-foreground leading-snug">
+                  <p className="line-clamp-2 text-xs text-muted-foreground leading-snug">
                     {getExcerpt(note)}
                   </p>
                 </div>
