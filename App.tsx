@@ -81,6 +81,14 @@ const App: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showNotebookShareModal, setShowNotebookShareModal] = useState(false);
+  const [noteOrderMap, setNoteOrderMap] = useState<Record<string, string[]>>(() => {
+    try {
+      const stored = localStorage.getItem('noteOrderMap');
+      return stored ? JSON.parse(stored) : {};
+    } catch {
+      return {};
+    }
+  });
   
   const [isDarkMode, setIsDarkMode] = useState(() => {
     const saved = localStorage.getItem('theme');
@@ -404,8 +412,26 @@ const App: React.FC = () => {
     );
   }
 
+  useEffect(() => {
+    localStorage.setItem('noteOrderMap', JSON.stringify(noteOrderMap));
+  }, [noteOrderMap]);
+
+  const applyOrder = (noteList: Note[]) => {
+    return [...noteList].sort((a, b) => {
+      const order = noteOrderMap[a.notebookId] || [];
+      const idxA = order.indexOf(a.id);
+      const idxB = order.indexOf(b.id);
+      if (idxA !== -1 || idxB !== -1) {
+        if (idxA === -1) return 1;
+        if (idxB === -1) return -1;
+        return idxA - idxB;
+      }
+      return b.updatedAt - a.updatedAt;
+    });
+  };
+
   const selectedNote = (activeTab === 'shared' ? sharedNotes : notes).find(n => n.id === selectedNoteId);
-  const visibleNotes = activeTab === 'shared' ? filterNotes(sharedNotes) : filterNotes(notes);
+  const visibleNotes = activeTab === 'shared' ? applyOrder(filterNotes(sharedNotes)) : applyOrder(filterNotes(notes));
   
   const activeNotebookObj = activeNotebookId ? notebooks.find(n => n.id === activeNotebookId) : null;
   
