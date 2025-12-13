@@ -92,10 +92,22 @@ const ShareModal: React.FC<ShareModalProps> = ({ resourceId, resourceType, title
   }, [publicShare]);
 
   const copyPublicLink = async () => {
-    if (!publicLink) return;
-    await navigator.clipboard.writeText(publicLink);
-    setCopyStatus('copied');
-    setTimeout(() => setCopyStatus('idle'), 2000);
+    setLoading(true);
+    let ensuredShare = publicShare;
+    if (!ensuredShare) {
+      ensuredShare = await StorageService.setPublicShare(resourceType, resourceId, true);
+      setPublicShare(ensuredShare);
+      await fetchShares();
+    }
+    const link = ensuredShare?.publicToken ? `${window.location.origin}/?share=${ensuredShare.publicToken}` : '';
+    if (link) {
+      await navigator.clipboard.writeText(link);
+      setCopyStatus('copied');
+      setTimeout(() => setCopyStatus('idle'), 2000);
+    } else {
+      alert('Não foi possível gerar o link público. Verifique permissões no Supabase.');
+    }
+    setLoading(false);
   };
 
   const handleAccessChange = async (option: 'restricted' | 'link_view' | 'link_edit') => {
