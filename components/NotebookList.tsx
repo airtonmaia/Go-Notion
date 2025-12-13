@@ -12,6 +12,7 @@ interface NotebookListProps {
   onCreateNotebook: (name: string, parentId: string | null) => void;
   onDeleteNotebook: (id: string) => void;
   onOpenMenu: () => void;
+  onDropNote?: (noteId: string, targetNotebookId: string) => void;
 }
 
 const NotebookList: React.FC<NotebookListProps> = ({ 
@@ -19,7 +20,8 @@ const NotebookList: React.FC<NotebookListProps> = ({
   onSelectNotebook, 
   onCreateNotebook, 
   onDeleteNotebook,
-  onOpenMenu 
+  onOpenMenu,
+  onDropNote
 }) => {
   const [newNotebookName, setNewNotebookName] = useState('');
   const [selectedParentId, setSelectedParentId] = useState<string>('');
@@ -67,6 +69,18 @@ const NotebookList: React.FC<NotebookListProps> = ({
             <div 
                className="group flex items-center justify-between p-3 hover:bg-muted/50 rounded-md transition-colors cursor-pointer mb-1" 
                onClick={() => onSelectNotebook(notebook.id)}
+               onDragOver={(e) => {
+                 if (!onDropNote) return;
+                 e.preventDefault();
+               }}
+               onDrop={(e) => {
+                 if (!onDropNote) return;
+                 e.preventDefault();
+                 const noteId = e.dataTransfer.getData('noteId');
+                 if (noteId) {
+                   onDropNote(noteId, notebook.id);
+                 }
+               }}
             >
               <div className="flex-1 flex items-center gap-3 text-left">
                 {depth > 0 && <CornerDownRight size={14} className="text-muted-foreground" />}

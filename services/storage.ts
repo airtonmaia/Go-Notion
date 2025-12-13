@@ -258,6 +258,48 @@ export const getSharedNotes = async (): Promise<Note[]> => {
   return Object.values(byId);
 };
 
+export const getSharedByToken = async (token: string): Promise<{ notes: Note[], notebookId?: string }> => {
+  const { data: shareRow, error } = await supabase
+    .from('shares')
+    .select('*')
+    .eq('public_token', token)
+    .maybeSingle();
+
+  if (error || !shareRow) {
+    console.error('Error fetching share by token:', error?.message);
+    return { notes: [] };
+  }
+
+  const share = mapShareFromDB(shareRow);
+
+  if (share.resourceType === 'note') {
+    const { data, error: noteError } = await supabase
+      .from('notes')
+      .select('*')
+      .eq('id', share.resourceId)
+      .maybeSingle();
+    if (noteError || !data) {
+      console.error('Error fetching shared note by token:', noteError?.message);
+      return { notes: [] };
+    }
+    return { notes: [mapNoteFromDB(data)] };
+  }
+
+  if (share.resourceType === 'notebook') {
+    const { data, error: notesError } = await supabase
+      .from('notes')
+      .select('*')
+      .eq('notebook_id', share.resourceId);
+    if (notesError || !data) {
+      console.error('Error fetching shared notebook notes by token:', notesError?.message);
+      return { notes: [] };
+    }
+    return { notes: data.map(mapNoteFromDB), notebookId: share.resourceId };
+  }
+
+  return { notes: [] };
+};
+
 export const getSharesForResource = async (resourceType: 'note' | 'notebook', resourceId: string): Promise<Share[]> => {
   const { data, error } = await supabase
     .from('shares')

@@ -277,6 +277,58 @@ const App: React.FC = () => {
     setActiveTab('notes');
   };
 
+  const handleReorderNotes = (notebookId: string, sourceId: string, targetId: string) => {
+    const currentOrder = noteOrderMap[notebookId] || applyOrder(notes.filter(n => n.notebookId === notebookId)).map(n => n.id);
+    const sourceIndex = currentOrder.indexOf(sourceId);
+    const targetIndex = currentOrder.indexOf(targetId);
+    if (sourceIndex === -1 || targetIndex === -1) return;
+    const updated = [...currentOrder];
+    updated.splice(sourceIndex, 1);
+    updated.splice(targetIndex, 0, sourceId);
+    setNoteOrderMap(prev => ({ ...prev, [notebookId]: updated }));
+  };
+
+  const handleMoveNote = async (noteId: string, targetNotebookId: string) => {
+    const note = notes.find(n => n.id === noteId);
+    if (!note || note.notebookId === targetNotebookId) return;
+    const updatedNote = { ...note, notebookId: targetNotebookId, updatedAt: Date.now() };
+    setNotes(prev => prev.map(n => n.id === noteId ? updatedNote : n));
+    await StorageService.saveNote(updatedNote);
+
+    // Remove from old order and add to top of new
+    setNoteOrderMap(prev => {
+      const next = { ...prev };
+      const oldList = (next[note.notebookId] || []).filter(id => id !== noteId);
+      if (oldList.length > 0) next[note.notebookId] = oldList;
+      const newList = next[targetNotebookId] ? [noteId, ...next[targetNotebookId].filter(id => id !== noteId)] : [noteId];
+      next[targetNotebookId] = newList;
+      return next;
+    });
+    setSelectedNoteId(noteId);
+    setActiveNotebookId(targetNotebookId);
+    setActiveTab('notes');
+  };
+
+  // Handle shared link token (?share=TOKEN)
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const shareToken = params.get('share');
+    if (!shareToken) return;
+    (async () => {
+      const { notes: sharedFromToken, notebookId: tokenNotebook } = await StorageService.getSharedByToken(shareToken);
+      if (sharedFromToken.length > 0) {
+        setSharedNotes(sharedFromToken);
+        setActiveTab('shared');
+        setSelectedNoteId(sharedFromToken[0].id);
+        if (tokenNotebook) {
+          setActiveNotebookId(tokenNotebook);
+        } else {
+          setActiveNotebookId(null);
+        }
+      }
+    })();
+  }, []);
+
   const updateTaskInNote = (note: Note, taskId: string, checked: boolean): Note => {
     let content = note.content || '';
     const now = Date.now();
@@ -341,6 +393,24 @@ const App: React.FC = () => {
   const handleBackToList = () => {
     setSelectedNoteId(null);
     setViewMode(ViewMode.EMPTY);
+  };
+
+  useEffect(() => {
+    localStorage.setItem('noteOrderMap', JSON.stringify(noteOrderMap));
+  }, [noteOrderMap]);
+
+  const applyOrder = (noteList: Note[]) => {
+    return [...noteList].sort((a, b) => {
+      const order = noteOrderMap[a.notebookId] || [];
+      const idxA = order.indexOf(a.id);
+      const idxB = order.indexOf(b.id);
+      if (idxA !== -1 || idxB !== -1) {
+        if (idxA === -1) return 1;
+        if (idxB === -1) return -1;
+        return idxA - idxB;
+      }
+      return b.updatedAt - a.updatedAt;
+    });
   };
 
   // Helper to filter notes based on current state
@@ -412,24 +482,6 @@ const App: React.FC = () => {
     );
   }
 
-  useEffect(() => {
-    localStorage.setItem('noteOrderMap', JSON.stringify(noteOrderMap));
-  }, [noteOrderMap]);
-
-  const applyOrder = (noteList: Note[]) => {
-    return [...noteList].sort((a, b) => {
-      const order = noteOrderMap[a.notebookId] || [];
-      const idxA = order.indexOf(a.id);
-      const idxB = order.indexOf(b.id);
-      if (idxA !== -1 || idxB !== -1) {
-        if (idxA === -1) return 1;
-        if (idxB === -1) return -1;
-        return idxA - idxB;
-      }
-      return b.updatedAt - a.updatedAt;
-    });
-  };
-
   const selectedNote = (activeTab === 'shared' ? sharedNotes : notes).find(n => n.id === selectedNoteId);
   const visibleNotes = activeTab === 'shared' ? applyOrder(filterNotes(sharedNotes)) : applyOrder(filterNotes(notes));
   
@@ -485,6 +537,7 @@ const App: React.FC = () => {
                   onDeleteNotebook={handleDeleteNotebook}
                   onSelectNotebook={handleSelectNotebook}
                   onOpenMenu={() => setIsMobileMenuOpen(true)}
+                  onDropNote={handleMoveNote}
                 />
               ) : (
                 <NoteList 
@@ -495,6 +548,9 @@ const App: React.FC = () => {
                   onOpenMenu={() => setIsMobileMenuOpen(true)}
                   notebookName={activeTitle}
                   onShareNotebook={activeNotebookId ? () => setShowNotebookShareModal(true) : undefined}
+                  notebookId={activeNotebookId || undefined}
+                  onReorderNote={activeNotebookId ? handleReorderNotes : undefined}
+                  onMoveNote={handleMoveNote}
                 />
               )}
             </div>

@@ -13,6 +13,9 @@ interface NoteListProps {
   onOpenMenu: () => void;
   notebookName?: string;
   onShareNotebook?: () => void;
+  notebookId?: string | null;
+  onReorderNote?: (notebookId: string, sourceId: string, targetId: string) => void;
+  onMoveNote?: (noteId: string, targetNotebookId: string) => void;
 }
 
 const NoteList: React.FC<NoteListProps> = ({ 
@@ -22,7 +25,10 @@ const NoteList: React.FC<NoteListProps> = ({
   searchQuery, 
   onOpenMenu,
   notebookName,
-  onShareNotebook
+  onShareNotebook,
+  notebookId,
+  onReorderNote,
+  onMoveNote
 }) => {
   const formatDate = (timestamp: number) => {
     return new Intl.DateTimeFormat('pt-BR', { month: 'short', day: 'numeric' }).format(new Date(timestamp));
@@ -102,6 +108,27 @@ const NoteList: React.FC<NoteListProps> = ({
               <button
                 key={note.id}
                 onClick={() => onSelectNote(note.id)}
+                draggable={!!onReorderNote && !!notebookId}
+                onDragStart={(e) => {
+                  if (!onReorderNote || !notebookId) return;
+                  e.dataTransfer.setData('noteId', note.id);
+                  e.dataTransfer.setData('notebookId', notebookId);
+                  e.dataTransfer.effectAllowed = 'move';
+                }}
+                onDragOver={(e) => {
+                  if (!onReorderNote || !notebookId) return;
+                  e.preventDefault(); // allow drop
+                }}
+                onDrop={(e) => {
+                  if (!onReorderNote || !notebookId) return;
+                  e.preventDefault();
+                  const sourceId = e.dataTransfer.getData('noteId');
+                  const sourceNotebook = e.dataTransfer.getData('notebookId');
+                  if (sourceNotebook && sourceNotebook !== notebookId) return;
+                  if (sourceId && sourceId !== note.id) {
+                    onReorderNote(notebookId, sourceId, note.id);
+                  }
+                }}
                 className={cn(
                   "relative flex flex-col items-start gap-2 w-full p-4 text-left transition-all rounded-lg border-2 border-gray-50",
                   selectedNoteId === note.id
