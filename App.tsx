@@ -13,6 +13,7 @@ import * as StorageService from './services/storage';
 import { supabase } from './services/supabase';
 import { Coffee, Menu, Loader2, Tag } from 'lucide-react';
 import { Button } from './components/ui/Button';
+import CommentsPanel from './components/CommentsPanel';
 
 const extractTasksFromNote = (note: Note): TaskItem[] => {
   const tasks: TaskItem[] = [];
@@ -89,6 +90,16 @@ const App: React.FC = () => {
       return {};
     }
   });
+  const [taskAssignments, setTaskAssignments] = useState<Record<string, string>>(() => {
+    try {
+      const stored = localStorage.getItem('taskAssignments');
+      return stored ? JSON.parse(stored) : {};
+    } catch {
+      return {};
+    }
+  });
+  const [showComments, setShowComments] = useState(false);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
   
   const [isDarkMode, setIsDarkMode] = useState(() => {
     const saved = localStorage.getItem('theme');
@@ -100,8 +111,11 @@ const App: React.FC = () => {
   // Derived state: Unique tags from all notes
   const allTags = Array.from(new Set(notes.flatMap(note => note.tags || []))).sort();
   const tasksFromNotes: TaskItem[] = useMemo(
-    () => notes.flatMap(extractTasksFromNote),
-    [notes]
+    () => notes.flatMap(extractTasksFromNote).map((task) => ({
+      ...task,
+      assignee: taskAssignments[task.id],
+    })),
+    [notes, taskAssignments]
   );
 
   // Auth Listener
@@ -109,6 +123,7 @@ const App: React.FC = () => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setLoadingAuth(false);
+      setUserEmail(session?.user?.email || null);
     });
 
     const {
@@ -116,6 +131,7 @@ const App: React.FC = () => {
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setLoadingAuth(false);
+      setUserEmail(session?.user?.email || null);
       // Reset state on logout
       if (!session) {
         setNotes([]);
@@ -127,6 +143,12 @@ const App: React.FC = () => {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (session?.user?.email) {
+      setUserEmail(session.user.email);
+    }
+  }, [session]);
 
   useEffect(() => {
     if (isDarkMode) {
@@ -152,6 +174,51 @@ const App: React.FC = () => {
     };
     loadData();
   }, [session]);
+
+  useEffect(() => {
+    if (!session) return;
+
+    const channel = supabase
+      .channel('realtime-notes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'notes',
+        },
+        async (payload) => {
+          const noteId = (payload.new as any)?.id || (payload.old as any)?.id;
+          if (!noteId) return;
+
+          if (payload.eventType === 'DELETE') {
+            setNotes((prev) => prev.filter((n) => n.id !== noteId));
+            return;
+          }
+
+          const updated = await StorageService.getNoteById(noteId);
+          if (updated) {
+            setNotes((prev) => {
+              const others = prev.filter((n) => n.id !== noteId);
+              return [updated, ...others].sort((a, b) => b.updatedAt - a.updatedAt);
+            });
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [session]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('taskAssignments', JSON.stringify(taskAssignments));
+    } catch {
+      // ignore
+    }
+  }, [taskAssignments]);
 
   const refreshData = async () => {
     if (session) {
@@ -192,6 +259,10 @@ const App: React.FC = () => {
   const handleUpdateNote = (updatedNote: Note) => {
     StorageService.saveNote(updatedNote);
     setNotes(prev => prev.map(n => n.id === updatedNote.id ? updatedNote : n));
+  };
+
+  const handleAssignTask = (taskId: string, assignee: string) => {
+    setTaskAssignments((prev) => ({ ...prev, [taskId]: assignee }));
   };
 
   const handleDeleteNote = (id: string) => {
@@ -522,6 +593,7 @@ const App: React.FC = () => {
             onSelectNote={handleSelectNoteFromTasks}
             onCreateTask={handleCreateTaskFromTasks}
             onToggleTask={handleToggleTaskStatus}
+            onAssignTask={handleAssignTask}
           />
         ) : (
           <>
@@ -566,6 +638,9 @@ const App: React.FC = () => {
                   onUpdate={handleUpdateNote}
                   onDelete={handleDeleteNote}
                   onBack={handleBackToList}
+                  showComments={showComments}
+                  onToggleComments={() => setShowComments((prev) => !prev)}
+                  currentUserEmail={userEmail}
                 />
               ) : (
                 <div className="h-full w-full flex flex-col items-center justify-center bg-muted/20 text-muted-foreground p-8 text-center">

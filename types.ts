@@ -41,6 +41,7 @@ export interface TaskItem {
   noteId: string;
   noteTitle: string;
   updatedAt: number;
+  assignee?: string;
 }
 
 export interface Share {
@@ -60,4 +61,12 @@ export enum ViewMode {
   EDITOR = 'EDITOR',
   EMPTY = 'EMPTY',
   ACCOUNT = 'ACCOUNT',
+}
+
+export interface Comment {
+  id: string;
+  noteId: string;
+  authorEmail: string;
+  content: string;
+  createdAt: string;
 }

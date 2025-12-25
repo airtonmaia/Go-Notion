@@ -1,6 +1,6 @@
 
 import { supabase } from './supabase';
-import { Note, Notebook, NoteRevision, Share } from '../types';
+import { Note, Notebook, NoteRevision, Share, Comment } from '../types';
 
 const generateId = () => crypto.randomUUID();
 
@@ -44,6 +44,14 @@ const mapNotebookToDB = (notebook: Notebook, userId: string) => ({
   parent_id: notebook.parentId,
 });
 
+const mapCommentFromDB = (row: any): Comment => ({
+  id: row.id,
+  noteId: row.note_id,
+  authorEmail: row.author_email || 'colaborador',
+  content: row.content,
+  createdAt: row.created_at,
+});
+
 // --- NOTES ---
 
 export const getNotes = async (): Promise<Note[]> => {
@@ -81,6 +89,21 @@ export const saveNote = async (note: Note): Promise<void> => {
 export const deleteNote = async (id: string): Promise<void> => {
   const { error } = await supabase.from('notes').delete().eq('id', id);
   if (error) console.error('Error deleting note from Supabase:', error.message);
+};
+
+export const getNoteById = async (id: string): Promise<Note | null> => {
+  const { data, error } = await supabase
+    .from('notes')
+    .select('*')
+    .eq('id', id)
+    .maybeSingle();
+
+  if (error || !data) {
+    if (error) console.error('Error fetching note by id:', error.message);
+    return null;
+  }
+
+  return mapNoteFromDB(data);
 };
 
 // --- REVISIONS (HISTORY) ---
@@ -347,6 +370,44 @@ export const updateShareRole = async (shareId: string, role: 'viewer' | 'editor'
     return false;
   }
   return true;
+};
+
+// --- COMMENTS ---
+export const getComments = async (noteId: string): Promise<Comment[]> => {
+  const { data, error } = await supabase
+    .from('note_comments')
+    .select('*')
+    .eq('note_id', noteId)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching comments:', error.message);
+    return [];
+  }
+  return (data || []).map(mapCommentFromDB);
+};
+
+export const addComment = async (noteId: string, content: string): Promise<Comment | null> => {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  const { data, error } = await supabase
+    .from('note_comments')
+    .insert({
+      note_id: noteId,
+      content,
+      author_id: user.id,
+      author_email: user.email,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error adding comment:', error.message);
+    return null;
+  }
+
+  return mapCommentFromDB(data);
 };
 
 export const removeShare = async (shareId: string): Promise<boolean> => {

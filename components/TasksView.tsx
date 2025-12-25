@@ -10,6 +10,7 @@ interface TasksViewProps {
   onSelectNote: (noteId: string) => void;
   onCreateTask: () => void;
   onToggleTask: (taskId: string, checked: boolean) => void;
+  onAssignTask: (taskId: string, assignee: string) => void;
 }
 
 const formatDate = (timestamp?: number) => {
@@ -22,7 +23,7 @@ const formatDate = (timestamp?: number) => {
   }
 };
 
-const TasksView: React.FC<TasksViewProps> = ({ tasks, onSelectNote, onCreateTask, onToggleTask }) => {
+const TasksView: React.FC<TasksViewProps> = ({ tasks, onSelectNote, onCreateTask, onToggleTask, onAssignTask }) => {
   const [query, setQuery] = useState('');
   const filteredTasks = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -75,6 +76,7 @@ const TasksView: React.FC<TasksViewProps> = ({ tasks, onSelectNote, onCreateTask
                 <th className="text-left font-medium px-4 py-3 w-1/2">Título</th>
                 <th className="text-left font-medium px-4 py-3">Status</th>
                 <th className="text-left font-medium px-4 py-3">Nota atribuída</th>
+                <th className="text-left font-medium px-4 py-3">Responsável</th>
                 <th className="text-left font-medium px-4 py-3">Atualizada</th>
                 <th className="px-4 py-3" />
               </tr>
@@ -82,7 +84,7 @@ const TasksView: React.FC<TasksViewProps> = ({ tasks, onSelectNote, onCreateTask
             <tbody>
               {filteredTasks.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-6 text-center text-muted-foreground">
+                  <td colSpan={6} className="px-4 py-6 text-center text-muted-foreground">
                     Nenhuma tarefa encontrada.
                   </td>
                 </tr>
@@ -130,6 +132,15 @@ const TasksView: React.FC<TasksViewProps> = ({ tasks, onSelectNote, onCreateTask
                         {task.noteTitle || 'Nota'}
                       </span>
                     </div>
+                  </td>
+                  <td className="px-4 py-3">
+                    <Input
+                      value={task.assignee || ''}
+                      placeholder="Atribuir para..."
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={(e) => onAssignTask(task.id, e.target.value)}
+                      className="h-9 text-sm"
+                    />
                   </td>
                   <td className="px-4 py-3 text-muted-foreground">
                     {formatDate(task.updatedAt)}
