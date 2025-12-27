@@ -1,6 +1,5 @@
-
-import React, { useState, useEffect, useRef } from 'react';
-import { Note } from '../types';
+import React, { useState, useEffect, useRef, Suspense } from 'react';
+import { Note, Block } from '../types';
 import { 
   MoreHorizontal, Calendar, Expand, 
   ArrowLeft, Edit3, Eye, Star, Share2, Link as LinkIcon, ExternalLink,
@@ -9,6 +8,7 @@ import {
 import { Button } from './ui/Button';
 import { cn } from './ui/utils';
 import TiptapEditor from './TiptapEditor';
+import BlockEditor from './BlockEditor';
 import HistoryModal from './HistoryModal';
 import ShareModal from './ShareModal';
 import { useToast } from '../hooks/useToast';
@@ -27,6 +27,8 @@ const Editor: React.FC<EditorProps> = ({ note, onUpdate, onDelete, onBack, showC
   const { addToast } = useToast();
   const [title, setTitle] = useState(note.title);
   const [content, setContent] = useState(note.content);
+  const [blocks, setBlocks] = useState<Block[]>(note.blocks || []);
+  const [useBlockEditor, setUseBlockEditor] = useState(!!note.blocks && note.blocks.length > 0);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [showSettingsMenu, setShowSettingsMenu] = useState(false);
   const [showHistoryModal, setShowHistoryModal] = useState(false);
@@ -40,6 +42,8 @@ const Editor: React.FC<EditorProps> = ({ note, onUpdate, onDelete, onBack, showC
   useEffect(() => {
     setTitle(note.title);
     setContent(note.content);
+    setBlocks(note.blocks || []);
+    setUseBlockEditor(!!note.blocks && note.blocks.length > 0);
     setShowSettingsMenu(false);
     setIsReadOnly(false);
   }, [note.id]);
@@ -335,12 +339,29 @@ const Editor: React.FC<EditorProps> = ({ note, onUpdate, onDelete, onBack, showC
       {/* Rich Text Editor + Comments */}
       <div className="flex-1 overflow-hidden flex">
         <div className="flex-1 overflow-hidden flex flex-col">
-          <TiptapEditor 
-            content={content} 
-            onChange={setContent} 
-            setEditorInstance={(editor) => editorRef.current = editor}
-            editable={!isReadOnly}
-          />
+          {useBlockEditor ? (
+            <div className="flex-1 overflow-y-auto p-6">
+              <Suspense fallback={<div className="text-muted-foreground">Carregando editor...</div>}>
+                <BlockEditor 
+                  blocks={blocks}
+                  onBlocksChange={(updatedBlocks) => {
+                    setBlocks(updatedBlocks);
+                    onUpdate({
+                      ...note,
+                      blocks: updatedBlocks,
+                    });
+                  }}
+                />
+              </Suspense>
+            </div>
+          ) : (
+            <TiptapEditor 
+              content={content} 
+              onChange={setContent} 
+              setEditorInstance={(editor) => editorRef.current = editor}
+              editable={!isReadOnly}
+            />
+          )}
         </div>
 
         {showComments && (

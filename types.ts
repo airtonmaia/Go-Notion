@@ -1,14 +1,40 @@
 
+export type BlockType = 
+  | 'paragraph' 
+  | 'heading1' 
+  | 'heading2' 
+  | 'heading3' 
+  | 'task' 
+  | 'bulletList' 
+  | 'numberedList' 
+  | 'table' 
+  | 'code' 
+  | 'quote' 
+  | 'divider' 
+  | 'image' 
+  | 'link'
+  | 'event'
+  | 'linkedNote';
+
+export interface Block {
+  id: string;
+  type: BlockType;
+  content: string; // HTML or JSON depending on type
+  order: number;
+  metadata?: Record<string, any>; // For additional data like code language, table rows, etc.
+}
+
 export interface Note {
   id: string;
   title: string;
-  content: string; // Storing markdown or plain text
+  content: string; // Keep for backward compatibility
+  blocks?: Block[]; // New: structured blocks
   excerpt: string;
   tags: string[];
   notebookId: string;
-  isFavorite?: boolean; // New field
-  updatedAt: number; // Timestamp
-  createdAt: number; // Timestamp
+  isFavorite?: boolean;
+  updatedAt: number;
+  createdAt: number;
 }
 
 export interface NoteRevision {
