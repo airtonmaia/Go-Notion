@@ -4,7 +4,7 @@ import { Note } from '../types';
 import { 
   MoreHorizontal, Calendar, Expand, 
   ArrowLeft, Edit3, Eye, Star, Share2, Link as LinkIcon, ExternalLink,
-  FolderInput, Copy, CopyPlus, Tags, Pin, Search, Info, History, Printer, Trash2
+  FolderInput, Copy, CopyPlus, Tags, Pin, Search, Info, History, Printer, Trash2, MessageSquare
 } from 'lucide-react';
 import { Button } from './ui/Button';
 import { cn } from './ui/utils';
@@ -18,9 +18,12 @@ interface EditorProps {
   onUpdate: (note: Note) => void;
   onDelete: (id: string) => void;
   onBack: () => void;
+  showComments: boolean;
+  onToggleComments: () => void;
+  currentUserEmail?: string | null;
 }
 
-const Editor: React.FC<EditorProps> = ({ note, onUpdate, onDelete, onBack }) => {
+const Editor: React.FC<EditorProps> = ({ note, onUpdate, onDelete, onBack, showComments, onToggleComments, currentUserEmail }) => {
   const { addToast } = useToast();
   const [title, setTitle] = useState(note.title);
   const [content, setContent] = useState(note.content);
@@ -147,7 +150,7 @@ const Editor: React.FC<EditorProps> = ({ note, onUpdate, onDelete, onBack }) => 
            </Button>
            
            {/* Favorite Quick Toggle */}
-            <Button
+           <Button
              variant="ghost"
              size="icon"
              onClick={toggleFavorite}
@@ -155,6 +158,17 @@ const Editor: React.FC<EditorProps> = ({ note, onUpdate, onDelete, onBack }) => 
              title="Favoritar"
            >
              <Star size={18} fill={note.isFavorite ? "currentColor" : "none"} />
+           </Button>
+
+           <Button
+             variant="ghost"
+             size="sm"
+             onClick={onToggleComments}
+             className={cn("gap-2", showComments && "text-primary bg-primary/10")}
+             title="Abrir comentários"
+           >
+             <MessageSquare size={16} />
+             <span className="hidden sm:inline">Comentários</span>
            </Button>
 
            <div className="h-4 w-px bg-border mx-1" />
@@ -318,14 +332,22 @@ const Editor: React.FC<EditorProps> = ({ note, onUpdate, onDelete, onBack }) => 
           />
       </div>
 
-      {/* Rich Text Editor */}
-      <div className="flex-1 overflow-hidden flex flex-col">
-        <TiptapEditor 
-          content={content} 
-          onChange={setContent} 
-          setEditorInstance={(editor) => editorRef.current = editor}
-          editable={!isReadOnly}
-        />
+      {/* Rich Text Editor + Comments */}
+      <div className="flex-1 overflow-hidden flex">
+        <div className="flex-1 overflow-hidden flex flex-col">
+          <TiptapEditor 
+            content={content} 
+            onChange={setContent} 
+            setEditorInstance={(editor) => editorRef.current = editor}
+            editable={!isReadOnly}
+          />
+        </div>
+
+        {showComments && (
+          <div className="w-80 border-l bg-card hidden md:flex">
+            <CommentsPanel noteId={note.id} currentUserEmail={currentUserEmail} />
+          </div>
+        )}
       </div>
 
       <HistoryModal 

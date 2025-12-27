@@ -61,20 +61,20 @@ const NoteList: React.FC<NoteListProps> = ({
   };
 
   return (
-    <div className="w-full flex flex-col h-full bg-gray-50 ">
-      <div className="p-4  flex items-center justify-between sticky top-0 z-10 bg-primary backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="flex items-center gap-3">
+    <div className="w-full flex flex-col h-full bg-background">
+      <div className="p-3 flex items-center justify-between sticky top-0 z-10 bg-muted/40 backdrop-blur border-b">
+        <div className="flex items-center gap-2">
           <Button 
             variant="ghost" 
             size="icon" 
             onClick={onOpenMenu}
-            className="md:hidden -ml-2 text-muted-foreground"
+            className="md:hidden -ml-2 text-muted-foreground h-8 w-8"
           >
-            <Menu size={20} />
+            <Menu size={16} />
           </Button>
-          <div className="w-full flex flex-col gap-1">
+          <div className="w-full flex flex-col gap-0.5">
             <div className="flex items-center gap-2">
-              <h2 className="text-lg font-semibold tracking-tight text-foreground">
+              <h2 className="text-sm font-semibold tracking-tight text-foreground">
                 {notebookName || 'Todas as Notas'}
               </h2>
               {notebookName && onShareNotebook && (
@@ -87,82 +87,95 @@ const NoteList: React.FC<NoteListProps> = ({
                 </button>
               )}
             </div>
-            <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1">
+            <p className="text-xs text-muted-foreground">
               {notes.length} notas
             </p>
           </div>
         </div>
       </div>
       
-      <div className="flex-1 overflow-y-auto px-3 py-2 space-y-2">
+      <div className="flex-1 overflow-auto">
         {notes.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-64 text-muted-foreground p-6 text-center">
-            <FileText size={48} className="mb-4 opacity-20" />
-            <p className="text-sm font-medium">
+            <FileText size={40} className="mb-4 opacity-20" />
+            <p className="text-xs font-medium">
               {searchQuery ? 'Nenhum resultado.' : 'Nenhuma nota aqui.'}
             </p>
           </div>
         ) : (
-          <div className="space-y-2">
-            {notes.map((note) => (
-              <button
-                key={note.id}
-                onClick={() => onSelectNote(note.id)}
-                draggable={!!onReorderNote && !!notebookId}
-                onDragStart={(e) => {
-                  if (!onReorderNote || !notebookId) return;
-                  e.dataTransfer.setData('noteId', note.id);
-                  e.dataTransfer.setData('notebookId', notebookId);
-                  e.dataTransfer.effectAllowed = 'move';
-                }}
-                onDragOver={(e) => {
-                  if (!onReorderNote || !notebookId) return;
-                  e.preventDefault(); // allow drop
-                }}
-                onDrop={(e) => {
-                  if (!onReorderNote || !notebookId) return;
-                  e.preventDefault();
-                  const sourceId = e.dataTransfer.getData('noteId');
-                  const sourceNotebook = e.dataTransfer.getData('notebookId');
-                  if (sourceNotebook && sourceNotebook !== notebookId) return;
-                  if (sourceId && sourceId !== note.id) {
-                    onReorderNote(notebookId, sourceId, note.id);
-                  }
-                }}
-                className={cn(
-                  "relative flex flex-col items-start gap-2 w-full p-4 text-left transition-all rounded-lg border-2 border-gray-50",
-                  selectedNoteId === note.id
-                    ? "bg-transparent shadow-none after:left-3 after:right-3 border-2 border-primary after:bottom-0 after:h-0.5 after:bg-primary"
-                    : "hover:bg-muted/40"
-                )}
-              >
-                <div className="flex flex-col gap-1 w-full">
-                  <h3 className={cn("font-semibold leading-none text-sm", selectedNoteId === note.id ? "text-accent-foreground" : "text-foreground")}>
-                    {note.title || 'Sem titulo'}
-                  </h3>
-                  <p className="line-clamp-2 text-xs text-muted-foreground leading-snug">
-                    {getExcerpt(note)}
-                  </p>
-                </div>
-                <div className="flex items-center text-xs text-muted-foreground gap-2 mt-1">
-                  <div className="flex items-center gap-1.5">
-                    <Clock size={12} />
-                    <span>{formatDate(note.updatedAt)}</span>
-                  </div>
-                  {(() => {
-                    const { total, done } = getTaskCounts(note);
-                    if (total === 0) return null;
-                    return (
-                      <span className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-primary/10 text-primary">
-                        <CheckSquare size={12} />
-                        {done}/{total}
-                      </span>
-                    );
-                  })()}
-                </div>
-              </button>
-            ))}
-          </div>
+          <table className="w-full text-xs border-collapse table-fixed">
+            <thead className="sticky top-0 z-10 bg-muted/80 backdrop-blur border-b text-muted-foreground">
+              <tr>
+                <th className="text-left font-medium px-3 py-1.5 text-xs">Título</th>
+                <th className="text-left font-medium px-3 py-1.5 text-xs w-24">Atualizado</th>
+                <th className="text-center font-medium px-3 py-1.5 text-xs w-20">Tarefas</th>
+              </tr>
+            </thead>
+            <tbody>
+              {notes.map((note) => (
+                <tr
+                  key={note.id}
+                  onClick={() => onSelectNote(note.id)}
+                  draggable={!!onReorderNote && !!notebookId}
+                  onDragStart={(e) => {
+                    if (!onReorderNote || !notebookId) return;
+                    e.dataTransfer.setData('noteId', note.id);
+                    e.dataTransfer.setData('notebookId', notebookId);
+                    e.dataTransfer.effectAllowed = 'move';
+                  }}
+                  onDragOver={(e) => {
+                    if (!onReorderNote || !notebookId) return;
+                    e.preventDefault();
+                  }}
+                  onDrop={(e) => {
+                    if (!onReorderNote || !notebookId) return;
+                    e.preventDefault();
+                    const sourceId = e.dataTransfer.getData('noteId');
+                    const sourceNotebook = e.dataTransfer.getData('notebookId');
+                    if (sourceNotebook && sourceNotebook !== notebookId) return;
+                    if (sourceId && sourceId !== note.id) {
+                      onReorderNote(notebookId, sourceId, note.id);
+                    }
+                  }}
+                  className={cn(
+                    "border-b hover:bg-muted/50 cursor-pointer transition-colors h-14",
+                    selectedNoteId === note.id && "bg-primary/10 border-l-2 border-l-primary"
+                  )}
+                >
+                  <td className="px-3 py-1.5 text-left align-middle">
+                    <div className="flex flex-col gap-0.5 truncate">
+                      <div className="font-medium truncate text-foreground text-xs">
+                        {note.title || 'Sem título'}
+                      </div>
+                      <div className="text-xs text-muted-foreground line-clamp-1">
+                        {getExcerpt(note)}
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-3 py-1.5 text-muted-foreground whitespace-nowrap text-xs align-middle">
+                    {formatDate(note.updatedAt)}
+                  </td>
+                  <td className="px-3 py-1.5 text-center align-middle">
+                    {(() => {
+                      const { total, done } = getTaskCounts(note);
+                      if (total === 0) return <span className="text-xs text-muted-foreground">—</span>;
+                      return (
+                        <span className={cn(
+                          "inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium",
+                          done === total 
+                            ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-200"
+                            : "bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-200"
+                        )}>
+                          <CheckSquare size={10} className="flex-shrink-0" />
+                          <span>{done}/{total}</span>
+                        </span>
+                      );
+                    })()}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         )}
       </div>
     </div>

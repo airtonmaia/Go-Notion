@@ -1,13 +1,9 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, Suspense, lazy } from 'react';
 import Sidebar from './components/Sidebar';
 import NoteList from './components/NoteList';
 import NotebookList from './components/NotebookList';
-import Editor from './components/Editor';
 import Auth from './components/Auth';
-import AccountSettings from './components/AccountSettings';
-import TasksView from './components/TasksView';
-import ShareModal from './components/ShareModal';
 import Toast from './components/Toast';
 import { Note, Notebook, TaskItem, ViewMode } from './types';
 import * as StorageService from './services/storage';
@@ -16,6 +12,15 @@ import { Coffee, Menu, Loader2, Tag } from 'lucide-react';
 import { Button } from './components/ui/Button';
 import { ToastProvider } from './contexts/ToastContext';
 import { useToast } from './hooks/useToast';
+import { useOnlineStatus } from './hooks/useOnlineStatus';
+import { LoadingFallback } from './components/ui/LoadingFallback';
+import { OnlineStatus } from './components/OnlineStatus';
+
+// Lazy load heavy components
+const Editor = lazy(() => import('./components/Editor'));
+const AccountSettings = lazy(() => import('./components/AccountSettings'));
+const TasksView = lazy(() => import('./components/TasksView'));
+const ShareModal = lazy(() => import('./components/ShareModal'));
 
 const extractTasksFromNote = (note: Note): TaskItem[] => {
   const tasks: TaskItem[] = [];
@@ -72,6 +77,7 @@ const extractTasksFromNote = (note: Note): TaskItem[] => {
 
 const App: React.FC = () => {
   const { addToast } = useToast();
+  const isOnline = useOnlineStatus();
   const [session, setSession] = useState<any>(null);
   const [loadingAuth, setLoadingAuth] = useState(true);
 
@@ -93,6 +99,16 @@ const App: React.FC = () => {
       return {};
     }
   });
+  const [taskAssignments, setTaskAssignments] = useState<Record<string, string>>(() => {
+    try {
+      const stored = localStorage.getItem('taskAssignments');
+      return stored ? JSON.parse(stored) : {};
+    } catch {
+      return {};
+    }
+  });
+  const [showComments, setShowComments] = useState(false);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
   
   const [isDarkMode, setIsDarkMode] = useState(() => {
     const saved = localStorage.getItem('theme');
@@ -104,8 +120,11 @@ const App: React.FC = () => {
   // Derived state: Unique tags from all notes
   const allTags = Array.from(new Set(notes.flatMap(note => note.tags || []))).sort();
   const tasksFromNotes: TaskItem[] = useMemo(
-    () => notes.flatMap(extractTasksFromNote),
-    [notes]
+    () => notes.flatMap(extractTasksFromNote).map((task) => ({
+      ...task,
+      assignee: taskAssignments[task.id],
+    })),
+    [notes, taskAssignments]
   );
 
   // Auth Listener
@@ -113,6 +132,7 @@ const App: React.FC = () => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setLoadingAuth(false);
+      setUserEmail(session?.user?.email || null);
     });
 
     const {
@@ -120,6 +140,7 @@ const App: React.FC = () => {
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       setLoadingAuth(false);
+      setUserEmail(session?.user?.email || null);
       // Reset state on logout
       if (!session) {
         setNotes([]);
@@ -131,6 +152,12 @@ const App: React.FC = () => {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (session?.user?.email) {
+      setUserEmail(session.user.email);
+    }
+  }, [session]);
 
   useEffect(() => {
     if (isDarkMode) {
@@ -156,6 +183,51 @@ const App: React.FC = () => {
     };
     loadData();
   }, [session]);
+
+  useEffect(() => {
+    if (!session) return;
+
+    const channel = supabase
+      .channel('realtime-notes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'notes',
+        },
+        async (payload) => {
+          const noteId = (payload.new as any)?.id || (payload.old as any)?.id;
+          if (!noteId) return;
+
+          if (payload.eventType === 'DELETE') {
+            setNotes((prev) => prev.filter((n) => n.id !== noteId));
+            return;
+          }
+
+          const updated = await StorageService.getNoteById(noteId);
+          if (updated) {
+            setNotes((prev) => {
+              const others = prev.filter((n) => n.id !== noteId);
+              return [updated, ...others].sort((a, b) => b.updatedAt - a.updatedAt);
+            });
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [session]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('taskAssignments', JSON.stringify(taskAssignments));
+    } catch {
+      // ignore
+    }
+  }, [taskAssignments]);
 
   const refreshData = async () => {
     if (session) {
@@ -196,6 +268,10 @@ const App: React.FC = () => {
   const handleUpdateNote = (updatedNote: Note) => {
     StorageService.saveNote(updatedNote);
     setNotes(prev => prev.map(n => n.id === updatedNote.id ? updatedNote : n));
+  };
+
+  const handleAssignTask = (taskId: string, assignee: string) => {
+    setTaskAssignments((prev) => ({ ...prev, [taskId]: assignee }));
   };
 
   const handleDeleteNote = (id: string) => {
@@ -462,6 +538,7 @@ const App: React.FC = () => {
   if (viewMode === ViewMode.ACCOUNT) {
     return (
       <div className="flex h-screen bg-background text-foreground overflow-hidden font-sans">
+        <OnlineStatus />
         <Sidebar 
           onNewNote={handleNewNote} 
           activeTab={activeTab}
@@ -481,7 +558,9 @@ const App: React.FC = () => {
           onOpenSettings={() => setViewMode(ViewMode.ACCOUNT)}
         />
         <div className="flex-1 h-full relative">
-            <AccountSettings onBack={handleBackToList} />
+            <Suspense fallback={<LoadingFallback />}>
+              <AccountSettings onBack={handleBackToList} />
+            </Suspense>
         </div>
       </div>
     );
@@ -500,6 +579,7 @@ const App: React.FC = () => {
 
   return (
     <>
+    <OnlineStatus />
     <div className="flex h-screen bg-background text-foreground overflow-hidden font-sans">
       <Sidebar 
         onNewNote={handleNewNote} 
@@ -522,12 +602,15 @@ const App: React.FC = () => {
 
       <div className="flex-1 flex h-full w-full">
         {activeTab === 'tasks' ? (
-          <TasksView
-            tasks={tasksFromNotes}
-            onSelectNote={handleSelectNoteFromTasks}
-            onCreateTask={handleCreateTaskFromTasks}
-            onToggleTask={handleToggleTaskStatus}
-          />
+          <Suspense fallback={<LoadingFallback />}>
+            <TasksView
+              tasks={tasksFromNotes}
+              onSelectNote={handleSelectNoteFromTasks}
+              onCreateTask={handleCreateTaskFromTasks}
+              onToggleTask={handleToggleTaskStatus}
+              onAssignTask={handleAssignTask}
+            />
+          </Suspense>
         ) : (
           <>
             <div className={`
@@ -566,12 +649,17 @@ const App: React.FC = () => {
               ${(selectedNoteId && activeTab !== 'notebooks') ? 'flex w-full' : ''}
             `}>
               {viewMode === ViewMode.EDITOR && selectedNote ? (
-                <Editor
-                  note={selectedNote}
-                  onUpdate={handleUpdateNote}
-                  onDelete={handleDeleteNote}
-                  onBack={handleBackToList}
-                />
+                <Suspense fallback={<LoadingFallback />}>
+                  <Editor
+                    note={selectedNote}
+                    onUpdate={handleUpdateNote}
+                    onDelete={handleDeleteNote}
+                    onBack={handleBackToList}
+                    showComments={showComments}
+                    onToggleComments={() => setShowComments((prev) => !prev)}
+                    currentUserEmail={userEmail}
+                  />
+                </Suspense>
               ) : (
                 <div className="h-full w-full flex flex-col items-center justify-center bg-muted/20 text-muted-foreground p-8 text-center">
                    <div className="md:hidden w-full absolute top-4 left-4">
@@ -619,13 +707,15 @@ const App: React.FC = () => {
     </div>
 
     {activeNotebookId && (
-      <ShareModal
-        open={showNotebookShareModal}
-        onClose={() => setShowNotebookShareModal(false)}
-        resourceId={activeNotebookId}
-        resourceType="notebook"
-        title={activeNotebookObj?.name || ''}
-      />
+      <Suspense fallback={null}>
+        <ShareModal
+          open={showNotebookShareModal}
+          onClose={() => setShowNotebookShareModal(false)}
+          resourceId={activeNotebookId}
+          resourceType="notebook"
+          title={activeNotebookObj?.name || ''}
+        />
+      </Suspense>
     )}
     </>
   );
