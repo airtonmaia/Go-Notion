@@ -1,0 +1,9 @@
+node_modules
+dist
+build
+.git
+coverage
+*.lock
+package-lock.json
+vite.config.ts
+wrangler.jsonc

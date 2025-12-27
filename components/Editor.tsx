@@ -11,6 +11,7 @@ import { cn } from './ui/utils';
 import TiptapEditor from './TiptapEditor';
 import HistoryModal from './HistoryModal';
 import ShareModal from './ShareModal';
+import { useToast } from '../hooks/useToast';
 
 interface EditorProps {
   note: Note;
@@ -20,6 +21,7 @@ interface EditorProps {
 }
 
 const Editor: React.FC<EditorProps> = ({ note, onUpdate, onDelete, onBack }) => {
+  const { addToast } = useToast();
   const [title, setTitle] = useState(note.title);
   const [content, setContent] = useState(note.content);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
@@ -78,7 +80,7 @@ const Editor: React.FC<EditorProps> = ({ note, onUpdate, onDelete, onBack }) => 
   };
 
   const handleDuplicate = () => {
-    alert("Funcionalidade de duplicação requer implementação no backend.");
+    addToast('Funcionalidade de duplicação requer implementação no backend', 'warning');
     setShowSettingsMenu(false);
   };
 
@@ -90,7 +92,7 @@ const Editor: React.FC<EditorProps> = ({ note, onUpdate, onDelete, onBack }) => 
   const copyLink = () => {
     const url = window.location.href;
     navigator.clipboard.writeText(url);
-    alert("Link copiado para a área de transferência!");
+    addToast('Link copiado para a área de transferência!', 'success');
     setShowSettingsMenu(false);
   };
 

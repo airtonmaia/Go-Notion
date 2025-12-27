@@ -8,11 +8,14 @@ import Auth from './components/Auth';
 import AccountSettings from './components/AccountSettings';
 import TasksView from './components/TasksView';
 import ShareModal from './components/ShareModal';
+import Toast from './components/Toast';
 import { Note, Notebook, TaskItem, ViewMode } from './types';
 import * as StorageService from './services/storage';
 import { supabase } from './services/supabase';
 import { Coffee, Menu, Loader2, Tag } from 'lucide-react';
 import { Button } from './components/ui/Button';
+import { ToastProvider } from './contexts/ToastContext';
+import { useToast } from './hooks/useToast';
 
 const extractTasksFromNote = (note: Note): TaskItem[] => {
   const tasks: TaskItem[] = [];
@@ -68,6 +71,7 @@ const extractTasksFromNote = (note: Note): TaskItem[] => {
 };
 
 const App: React.FC = () => {
+  const { addToast } = useToast();
   const [session, setSession] = useState<any>(null);
   const [loadingAuth, setLoadingAuth] = useState(true);
 
@@ -169,7 +173,7 @@ const App: React.FC = () => {
     
     // Safety check
     if (!targetNotebookId) {
-        alert("Crie um caderno primeiro.");
+        addToast('Crie um caderno primeiro', 'warning');
         return;
     }
 
@@ -195,10 +199,11 @@ const App: React.FC = () => {
   };
 
   const handleDeleteNote = (id: string) => {
-    if (window.confirm("Tem certeza que deseja excluir esta nota?")) {
+    if (window.confirm('Tem certeza que deseja excluir esta nota?')) {
       StorageService.deleteNote(id);
       const remaining = notes.filter(n => n.id !== id);
       setNotes(remaining);
+      addToast('Nota deletada com sucesso', 'success');
       
       // Select next logic
       if (remaining.length > 0) {
@@ -626,4 +631,13 @@ const App: React.FC = () => {
   );
 };
 
-export default App;
+const AppWithToast: React.FC = () => {
+  return (
+    <ToastProvider>
+      <App />
+      <Toast />
+    </ToastProvider>
+  );
+};
+
+export default AppWithToast;

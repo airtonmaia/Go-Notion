@@ -1,6 +1,7 @@
 
 import { supabase } from './supabase';
 import { Note, Notebook, NoteRevision, Share } from '../types';
+import * as CacheService from './cache';
 
 const generateId = () => crypto.randomUUID();
 
@@ -50,31 +51,51 @@ export const getNotes = async (): Promise<Note[]> => {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return [];
 
-  const { data, error } = await supabase
-    .from('notes')
-    .select('*')
-    .eq('user_id', user.id) // Security check
-    .order('updated_at', { ascending: false });
+  try {
+    const { data, error } = await supabase
+      .from('notes')
+      .select('*')
+      .eq('user_id', user.id) // Security check
+      .order('updated_at', { ascending: false });
 
-  if (error) {
-    console.error('Error fetching notes:', error.message);
-    return [];
+    if (error) {
+      console.error('Error fetching notes:', error.message);
+      // Fallback to cache on error
+      return await CacheService.getCachedNotes();
+    }
+    
+    const mappedNotes = data ? data.map(mapNoteFromDB) : [];
+    // Cache the notes for offline access
+    await CacheService.cacheNotes(mappedNotes);
+    await CacheService.setLastSyncTime(Date.now());
+    return mappedNotes;
+  } catch (err) {
+    console.error('Error in getNotes:', err);
+    // Fallback to cache on network error
+    return await CacheService.getCachedNotes();
   }
-  
-  return data ? data.map(mapNoteFromDB) : [];
 };
 
 export const saveNote = async (note: Note): Promise<void> => {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return;
 
-  const { error } = await supabase
-    .from('notes')
-    .upsert(mapNoteToDB(note, user.id));
-    
-  if (error) {
-    // Log the full error message for debugging
-    console.error('Error saving note to Supabase:', JSON.stringify(error, null, 2));
+  // Always cache the note locally first
+  await CacheService.cacheNote(note);
+
+  try {
+    const { error } = await supabase
+      .from('notes')
+      .upsert(mapNoteToDB(note, user.id));
+      
+    if (error) {
+      console.error('Error saving note to Supabase:', JSON.stringify(error, null, 2));
+    } else {
+      await CacheService.setLastSyncTime(Date.now());
+    }
+  } catch (err) {
+    console.error('Network error while saving note:', err);
+    // Note is already cached, will sync when back online
   }
 };
 
